@@ -13,3 +13,5 @@ benchmark/raw/**/*.png
 benchmark/raw/**/*.jpg
 benchmark/raw/**/*.heic
 !benchmark/raw/README.md
+
+*.log
