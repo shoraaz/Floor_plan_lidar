@@ -6,7 +6,7 @@ from pathlib import Path
 import numpy as np, cv2, pandas as pd, torch
 from depth_anything_3.api import DepthAnything3
 
-cap = Path(sys.argv[1]); fps = 3.0
+cap = Path(sys.argv[1]); fps = 3.0; ray = len(sys.argv) > 2 and sys.argv[2] == 'ray'
 clip = cap / "rgb.mp4"
 h = hashlib.sha1(f"{clip.resolve()}|{fps}|960".encode()).hexdigest()[:12]
 imgs_p = sorted((Path("cache") / f"video_{h}" / "images").glob("*.jpg"))
@@ -27,7 +27,7 @@ for start in (0, 40, 80):
     sel = list(range(start, min(start + 24, len(imgs_p))))
     imgs = [cv2.cvtColor(cv2.imread(str(imgs_p[i])), cv2.COLOR_BGR2RGB) for i in sel]
     with torch.no_grad():
-        pred = model.inference(imgs, process_res=504)
+        pred = model.inference(imgs, process_res=504, use_ray_pose=ray)
     E = np.array(pred.extrinsics, dtype=float)
     if E.shape[1] == 3:
         E = np.concatenate([E, np.tile([[[0, 0, 0, 1]]], (len(E), 1, 1))], 1)
