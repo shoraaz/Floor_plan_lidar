@@ -3,22 +3,22 @@
   "coarse_overlap": 0.6144798398017883,
   "coarse_rot_deg": 0,
   "icp_fitness": 0.5879807920886226,
-  "icp_rmse_m": 0.009470451523397075,
+  "icp_rmse_m": 0.009470451523397077,
   "residual_rot_deg": 0.2151245765837544
  },
  "rooms": [
   {
    "room_a": "room1",
    "room_b": "room1",
-   "iou": 0.837,
-   "area_a": 13.269,
-   "area_b": 13.083
+   "iou": 0.933,
+   "area_a": 12.155,
+   "area_b": 12.081
   },
   {
    "room_a": "room2",
    "room_b": "room3",
-   "iou": 0.68,
-   "area_a": 9.66,
+   "iou": 0.662,
+   "area_a": 9.966,
    "area_b": 7.864
   },
   {
@@ -61,7 +61,7 @@
    "room_b": "room1",
    "iou": 0.0,
    "area_a": 2.187,
-   "area_b": 13.083
+   "area_b": 12.081
   },
   {
    "room_a": "room9",
@@ -81,118 +81,73 @@
  "walls": [
   {
    "room": "room1",
-   "wall_len_a": 3.27,
-   "wall_len_b": 3.39,
-   "diff_cm": 12.0,
-   "face_offset_cm": 16.6,
+   "wall_len_a": 2.864,
+   "wall_len_b": 2.8713,
+   "diff_cm": 0.73,
+   "face_offset_cm": 10.76,
+   "pass": true,
+   "note": ""
+  },
+  {
+   "room": "room1",
+   "wall_len_a": 4.2442,
+   "wall_len_b": 4.2076,
+   "diff_cm": 3.67,
+   "face_offset_cm": 4.3,
    "pass": false,
    "note": ""
   },
   {
    "room": "room1",
-   "wall_len_a": 1.7574,
-   "wall_len_b": 1.23,
-   "diff_cm": 52.74,
-   "face_offset_cm": 12.73,
-   "pass": false,
+   "wall_len_a": 2.864,
+   "wall_len_b": 2.8713,
+   "diff_cm": 0.73,
+   "face_offset_cm": 7.09,
+   "pass": true,
    "note": ""
   },
   {
    "room": "room1",
-   "wall_len_a": 0.92,
-   "wall_len_b": null,
-   "diff_cm": null,
-   "face_offset_cm": null,
-   "pass": false,
-   "note": "no matching wall in B"
-  },
-  {
-   "room": "room1",
-   "wall_len_a": 0.6674,
-   "wall_len_b": null,
-   "diff_cm": null,
-   "face_offset_cm": null,
-   "pass": false,
-   "note": "no matching wall in B"
-  },
-  {
-   "room": "room1",
-   "wall_len_a": 2.11,
-   "wall_len_b": 2.16,
-   "diff_cm": 5.0,
-   "face_offset_cm": 18.54,
-   "pass": false,
-   "note": ""
-  },
-  {
-   "room": "room1",
-   "wall_len_a": 4.36,
-   "wall_len_b": 3.98,
-   "diff_cm": 38.0,
-   "face_offset_cm": 4.66,
-   "pass": false,
-   "note": ""
-  },
-  {
-   "room": "room1",
-   "wall_len_a": 2.86,
-   "wall_len_b": 2.16,
-   "diff_cm": 70.0,
-   "face_offset_cm": 19.46,
+   "wall_len_a": 4.2442,
+   "wall_len_b": 4.2076,
+   "diff_cm": 3.67,
+   "face_offset_cm": 3.57,
    "pass": false,
    "note": ""
   },
   {
    "room": "room2",
-   "wall_len_a": 0.87,
-   "wall_len_b": 0.85,
-   "diff_cm": 2.0,
-   "face_offset_cm": 8.73,
-   "pass": false,
-   "note": ""
-  },
-  {
-   "room": "room2",
-   "wall_len_a": 0.65,
-   "wall_len_b": 0.69,
-   "diff_cm": 4.0,
-   "face_offset_cm": 11.5,
-   "pass": false,
-   "note": ""
-  },
-  {
-   "room": "room2",
-   "wall_len_a": 2.12,
-   "wall_len_b": 3.1195,
-   "diff_cm": 99.95,
-   "face_offset_cm": 5.47,
-   "pass": false,
-   "note": ""
-  },
-  {
-   "room": "room2",
-   "wall_len_a": 3.42,
-   "wall_len_b": null,
-   "diff_cm": null,
-   "face_offset_cm": null,
-   "pass": false,
-   "note": "no matching wall in B"
-  },
-  {
-   "room": "room2",
-   "wall_len_a": 2.99,
-   "wall_len_b": null,
-   "diff_cm": null,
-   "face_offset_cm": null,
-   "pass": false,
-   "note": "no matching wall in B"
-  },
-  {
-   "room": "room2",
-   "wall_len_a": 2.77,
+   "wall_len_a": 3.4245,
    "wall_len_b": 2.24,
-   "diff_cm": 53.0,
-   "face_offset_cm": 12.95,
+   "diff_cm": 118.45,
+   "face_offset_cm": 4.14,
+   "pass": false,
+   "note": ""
+  },
+  {
+   "room": "room2",
+   "wall_len_a": 2.9103,
+   "wall_len_b": null,
+   "diff_cm": null,
+   "face_offset_cm": null,
+   "pass": false,
+   "note": "no matching wall in B"
+  },
+  {
+   "room": "room2",
+   "wall_len_a": 3.4245,
+   "wall_len_b": null,
+   "diff_cm": null,
+   "face_offset_cm": null,
+   "pass": false,
+   "note": "no matching wall in B"
+  },
+  {
+   "room": "room2",
+   "wall_len_a": 2.9103,
+   "wall_len_b": 3.1195,
+   "diff_cm": 20.92,
+   "face_offset_cm": 5.53,
    "pass": false,
    "note": ""
   },
@@ -305,6 +260,6 @@
    "note": ""
   }
  ],
- "walls_pass": 0,
- "walls_total": 25
+ "walls_pass": 2,
+ "walls_total": 20
 }

@@ -67,7 +67,7 @@ def fused(capture: Path, stride: int = 6, voxel: float = 0.015):
 def run(capture: Path, drift_correction: bool = True) -> PropertyPlan:
     from ..geometry.planes import horizontal_planes, estimate_yaw, rotate_y
     from ..geometry.rooms import segment_structure_v2
-    from ..geometry.snap import snap_rooms_local
+    from ..geometry.snap import snap_rooms_rect
 
     P, cams, rays = fused(capture)
     warnings: list[str] = []
@@ -79,7 +79,7 @@ def run(capture: Path, drift_correction: bool = True) -> PropertyPlan:
     P, cams = rotate_y(P, yaw), rotate_y(cams, yaw)
     rays = [rotate_y(r, yaw) for r in rays]
     g, labels, wall, free, doors, flags = segment_structure_v2(P, cams, rays, hp.floor_y, hp.ceiling_y)
-    geoms = snap_rooms_local(g, labels, P, hp.floor_y, hp.ceiling_y, wall)
+    geoms, shapes = snap_rooms_rect(g, labels, P, hp.floor_y, hp.ceiling_y, wall)
 
     cal = calibration.load()["lidar"]
     rooms = []

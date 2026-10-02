@@ -207,3 +207,87 @@ def snap_rooms_local(g: Grid, labels: np.ndarray, P: np.ndarray, floor_y: float,
                 cs_ = float(np.median(np.abs(yc - med)) * 1.4826)
         rooms.append(RoomGeom(int(lab), poly, lengths, support, _poly_area(poly), ch, cs_))
     return rooms
+
+
+def _face_near(pts: np.ndarray, axis: int, run_axis: int, run_lo: float, run_hi: float, guess: float,
+               interior_sign: int, win: float = 0.35, bin_m: float = 0.01, strong: float = 0.4):
+    """Pick the wall face near `guess` along `axis`, using points whose run coordinate lies inside the room.
+
+    Among strong histogram peaks in [guess-win, guess+win], return the one closest to the room interior
+    (interior_sign=+1 means the room lies at larger coordinates). That is the room-side face, the surface a
+    tape measure touches; the far face of the same wall is ignored. Returns (face, support) or (None, 0).
+    """
+    shrink = 0.15 * (run_hi - run_lo)
+    sel = pts[(pts[:, run_axis] > run_lo + shrink) & (pts[:, run_axis] < run_hi - shrink) &
+              (np.abs(pts[:, axis] - guess) < win)]
+    if len(sel) < 40:
+        return None, 0.0
+    v = sel[:, axis]
+    edges = np.arange(guess - win, guess + win + bin_m, bin_m)
+    h, _ = np.histogram(v, bins=edges)
+    h = ndi.gaussian_filter1d(h.astype(float), 1.0)
+    pk, _ = find_peaks(h, height=strong * h.max(), distance=4)
+    if len(pk) == 0:
+        return None, 0.0
+    centres = (edges[pk] + edges[pk + 1]) / 2
+    face = float(centres.max() if interior_sign > 0 else centres.min())
+    # refine: median of points within 2 cm of the chosen peak (sub-bin precision)
+    near = v[np.abs(v - face) < 0.02]
+    face = float(np.median(near)) if len(near) > 10 else face
+    on = sel[np.abs(sel[:, axis] - face) < 0.03][:, run_axis]
+    b = np.arange(run_lo + shrink, run_hi - shrink + 0.05, 0.05)
+    support = float((np.histogram(on, bins=b)[0] > 2).mean()) if len(b) > 1 else 0.0
+    return face, support
+
+
+def snap_rooms_rect(g: Grid, labels: np.ndarray, P: np.ndarray, floor_y: float, ceiling_y: float | None,
+                    wall: np.ndarray, min_fill: float = 0.80, min_room_m2: float = 1.0,
+                    band_m: tuple[float, float] = (0.95, 1.6)):
+    """Rectangle-first room extraction (stable across captures).
+
+    Each room is first modelled as an axis-aligned rectangle whose four sides are snapped independently to
+    the room-side wall face (sub-cm median of the face points). Only if the room mask fills less than
+    `min_fill` of that rectangle (an L-shape or similar) do we fall back to the rectilinear cell polygon,
+    and the room is flagged. Few free parameters -> the same flat gives the same numbers on every walk.
+    """
+    top = ceiling_y if ceiling_y is not None else floor_y + 2.3
+    band = P[(P[:, 1] > floor_y + band_m[0]) & (P[:, 1] < min(top - 0.15, floor_y + band_m[1]))]
+    ceil_pts = P[np.abs(P[:, 1] - ceiling_y) < 0.08] if ceiling_y is not None else None
+    fallback = {r.label: r for r in snap_rooms_local(g, labels, P, floor_y, ceiling_y, wall)}
+    rooms, shapes = [], {}
+    for lab in np.unique(labels):
+        if lab == 0:
+            continue
+        m = labels == lab
+        if m.sum() * g.res ** 2 < min_room_m2:
+            continue
+        rr, cc = np.nonzero(m)
+        xs = g.x0 + (cc + 0.5) * g.res; zs = g.z0 + (rr + 0.5) * g.res
+        xl, xr = np.percentile(xs, 1), np.percentile(xs, 99)
+        zb, zt = np.percentile(zs, 1), np.percentile(zs, 99)
+        L, sL = _face_near(band, 0, 2, zb, zt, xl, +1)
+        R, sR = _face_near(band, 0, 2, zb, zt, xr, -1)
+        B, sB = _face_near(band, 2, 0, xl, xr, zb, +1)
+        T, sT = _face_near(band, 2, 0, xl, xr, zt, -1)
+        L = xl if L is None else L; R = xr if R is None else R
+        B = zb if B is None else B; T = zt if T is None else T
+        rect_area = max((R - L) * (T - B), 1e-6)
+        fill = m.sum() * g.res ** 2 / rect_area
+        if fill < min_fill and lab in fallback:
+            rooms.append(fallback[lab]); shapes[lab] = {"shape": "rectilinear", "fill": float(fill)}
+            continue
+        poly = [(L, B), (R, B), (R, T), (L, T)]
+        lengths = [R - L, T - B, R - L, T - B]
+        support = [sB, sR, sT, sL]
+        ch = cs_ = None
+        if ceil_pts is not None:
+            r2, c2 = g.idx(ceil_pts[:, 0], ceil_pts[:, 2])
+            ok = (r2 >= 0) & (r2 < g.shape[0]) & (c2 >= 0) & (c2 < g.shape[1])
+            inside = np.zeros(len(ceil_pts), bool); inside[ok] = m[r2[ok], c2[ok]]
+            yc = ceil_pts[inside, 1]
+            if len(yc) > 200:
+                med = float(np.median(yc)); ch = med - floor_y
+                cs_ = float(np.median(np.abs(yc - med)) * 1.4826)
+        rooms.append(RoomGeom(int(lab), poly, [float(x) for x in lengths], support, float(rect_area), ch, cs_))
+        shapes[lab] = {"shape": "rectangle", "fill": float(fill)}
+    return rooms, shapes

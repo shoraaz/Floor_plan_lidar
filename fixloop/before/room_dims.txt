@@ -1,0 +1,8 @@
+residual rot 0.215
+room4  ~room3   x-extent A=3.190 B=4.198 diff= 100.8 cm  IoU=0.61
+room4  ~room3   z-extent A=2.750 B=3.976 diff= 122.6 cm  IoU=0.61
+room5  ~room4   x-extent A=1.480 B=1.288 diff=  19.2 cm  IoU=0.73
+room5  ~room4   z-extent A=1.940 B=2.195 diff=  25.5 cm  IoU=0.73
+room7  ~room6   x-extent A=3.940 B=3.963 diff=   2.3 cm  IoU=0.6
+room7  ~room6   z-extent A=2.940 B=3.685 diff=  74.5 cm  IoU=0.6
+median diff 50.0 cm; within 1cm: 0/6; within 5cm: 1/6
