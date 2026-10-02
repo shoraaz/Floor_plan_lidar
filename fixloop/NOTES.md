@@ -28,3 +28,12 @@ it4 findings
   The Manhattan yaw estimate (normal-histogram, concentration ~0.6) is not precise enough for a 1 cm gate.
 - Next candidates: (a) refine yaw by fitting long wall lines (target < 0.1 deg); (b) regularise polygons (remove
   notches < 0.3 m caused by furniture/door plugs) so walls are not fragmented differently per capture.
+
+| it5 | + fine yaw refinement (wall-sharpness search, 0.02 deg) | 10/8 | (see room_dims_check) | 0/25 | 5.2% |
+
+it5 findings
+- Residual rotation between captures 0.75 -> 0.22 deg (per-capture yaw moved 0.5 / 0.86 deg). Yaw refinement works.
+- Wall gate and footprint got worse: the room split is sensitive to sub-degree rotation (cells flip between rooms).
+- scripts/room_dims_check.py: matched rooms' wall-to-wall extents differ by 3-138 cm (median 20 cm); the best-matched
+  room (IoU 0.91) differs 3.0 / 5.9 cm. So beyond partitioning, the per-room polygon extraction itself
+  (cell voting + local face lines) is not stable; raw wall surfaces agree to ~1 cm (ICP), so the error is in extraction.

@@ -65,7 +65,7 @@ def fused(capture: Path, stride: int = 6, voxel: float = 0.015):
 
 
 def run(capture: Path, drift_correction: bool = True) -> PropertyPlan:
-    from ..geometry.planes import horizontal_planes, manhattan_yaw, rotate_y, wall_slice
+    from ..geometry.planes import horizontal_planes, estimate_yaw, rotate_y
     from ..geometry.rooms import segment_structure_v2
     from ..geometry.snap import snap_rooms_local
 
@@ -74,7 +74,8 @@ def run(capture: Path, drift_correction: bool = True) -> PropertyPlan:
     if drift_correction:
         warnings.append("drift correction not implemented yet: poses used as reported by ARKit")
     hp = horizontal_planes(P, cam_y=float(np.median(cams[:, 1])))
-    yaw, conc = manhattan_yaw(wall_slice(P, hp))
+    yaw, yinfo = estimate_yaw(P, hp)
+    conc = yinfo["coarse_concentration"]
     P, cams = rotate_y(P, yaw), rotate_y(cams, yaw)
     rays = [rotate_y(r, yaw) for r in rays]
     g, labels, wall, free, doors, flags = segment_structure_v2(P, cams, rays, hp.floor_y, hp.ceiling_y)
@@ -113,4 +114,5 @@ def run(capture: Path, drift_correction: bool = True) -> PropertyPlan:
                         input_quality={"frames": int(len(cams)), "manhattan_concentration": round(conc, 3),
                                        "floor_spread_m": round(hp.floor_spread_m, 4),
                                        "loop_gap_m": round(float(np.linalg.norm(cams[-1] - cams[0])), 3),
-                                       "yaw_deg": round(float(np.degrees(yaw)), 3)})
+                                       "yaw_deg": round(float(np.degrees(yaw)), 3),
+                                       "yaw_refine_delta_deg": round(yinfo["delta_deg"], 3)})

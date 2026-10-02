@@ -17,7 +17,7 @@ from scipy.signal import fftconvolve
 from shapely.geometry import Polygon
 
 from ..tiers.lidar import fused
-from ..geometry.planes import horizontal_planes, manhattan_yaw, rotate_y, wall_slice
+from ..geometry.planes import horizontal_planes, estimate_yaw, rotate_y
 
 RES = 0.05
 
@@ -25,7 +25,7 @@ RES = 0.05
 def aligned_band(capture: Path) -> np.ndarray:
     P, cams, _ = fused(capture)
     hp = horizontal_planes(P, cam_y=float(np.median(cams[:, 1])))
-    yaw, _ = manhattan_yaw(wall_slice(P, hp))
+    yaw, _ = estimate_yaw(P, hp)
     P = rotate_y(P, yaw)
     return P[(P[:, 1] > hp.floor_y + 1.1) & (P[:, 1] < hp.floor_y + 2.0)][:, [0, 2]]
 
