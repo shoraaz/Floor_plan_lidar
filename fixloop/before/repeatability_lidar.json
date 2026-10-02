@@ -1,0 +1,262 @@
+{
+ "registration": {
+  "coarse_overlap": 0.601496160030365,
+  "coarse_rot_deg": 0,
+  "icp_fitness": 0.5810257874203064,
+  "icp_rmse_m": 0.009466228319169136,
+  "residual_rot_deg": 0.7517342072160673
+ },
+ "rooms": [
+  {
+   "room_a": "room1",
+   "room_b": "room1",
+   "iou": 0.011,
+   "area_a": 7.125,
+   "area_b": 9.18
+  },
+  {
+   "room_a": "room2",
+   "room_b": "room1",
+   "iou": 0.489,
+   "area_a": 4.49,
+   "area_b": 9.18
+  },
+  {
+   "room_a": "room3",
+   "room_b": "room2",
+   "iou": 0.501,
+   "area_a": 11.081,
+   "area_b": 5.763
+  },
+  {
+   "room_a": "room4",
+   "room_b": "room3",
+   "iou": 0.601,
+   "area_a": 8.773,
+   "area_b": 12.103
+  },
+  {
+   "room_a": "room5",
+   "room_b": "room4",
+   "iou": 0.778,
+   "area_a": 2.871,
+   "area_b": 2.803
+  },
+  {
+   "room_a": "room6",
+   "room_b": "room1",
+   "iou": 0.276,
+   "area_a": 3.572,
+   "area_b": 9.18
+  },
+  {
+   "room_a": "room7",
+   "room_b": "room6",
+   "iou": 0.633,
+   "area_a": 10.066,
+   "area_b": 13.888
+  }
+ ],
+ "walls": [
+  {
+   "room": "room3",
+   "wall_len_a": 0.86,
+   "wall_len_b": 2.55,
+   "diff_cm": 169.0,
+   "face_offset_cm": 18.14,
+   "pass": false,
+   "note": ""
+  },
+  {
+   "room": "room3",
+   "wall_len_a": 0.92,
+   "wall_len_b": null,
+   "diff_cm": null,
+   "face_offset_cm": null,
+   "pass": false,
+   "note": "no matching wall in B"
+  },
+  {
+   "room": "room3",
+   "wall_len_a": 3.86,
+   "wall_len_b": null,
+   "diff_cm": null,
+   "face_offset_cm": null,
+   "pass": false,
+   "note": "no matching wall in B"
+  },
+  {
+   "room": "room3",
+   "wall_len_a": 0.92,
+   "wall_len_b": null,
+   "diff_cm": null,
+   "face_offset_cm": null,
+   "pass": false,
+   "note": "no matching wall in B"
+  },
+  {
+   "room": "room3",
+   "wall_len_a": 1.72,
+   "wall_len_b": null,
+   "diff_cm": null,
+   "face_offset_cm": null,
+   "pass": false,
+   "note": "no matching wall in B"
+  },
+  {
+   "room": "room3",
+   "wall_len_a": 2.51,
+   "wall_len_b": null,
+   "diff_cm": null,
+   "face_offset_cm": null,
+   "pass": false,
+   "note": "no matching wall in B"
+  },
+  {
+   "room": "room3",
+   "wall_len_a": 3.0,
+   "wall_len_b": null,
+   "diff_cm": null,
+   "face_offset_cm": null,
+   "pass": false,
+   "note": "no matching wall in B"
+  },
+  {
+   "room": "room3",
+   "wall_len_a": 2.51,
+   "wall_len_b": 2.26,
+   "diff_cm": 25.0,
+   "face_offset_cm": 10.61,
+   "pass": false,
+   "note": ""
+  },
+  {
+   "room": "room4",
+   "wall_len_a": 2.75,
+   "wall_len_b": null,
+   "diff_cm": null,
+   "face_offset_cm": null,
+   "pass": false,
+   "note": "no matching wall in B"
+  },
+  {
+   "room": "room4",
+   "wall_len_a": 3.19,
+   "wall_len_b": null,
+   "diff_cm": null,
+   "face_offset_cm": null,
+   "pass": false,
+   "note": "no matching wall in B"
+  },
+  {
+   "room": "room4",
+   "wall_len_a": 2.75,
+   "wall_len_b": 3.77,
+   "diff_cm": 102.0,
+   "face_offset_cm": 4.62,
+   "pass": false,
+   "note": ""
+  },
+  {
+   "room": "room4",
+   "wall_len_a": 3.19,
+   "wall_len_b": null,
+   "diff_cm": null,
+   "face_offset_cm": null,
+   "pass": false,
+   "note": "no matching wall in B"
+  },
+  {
+   "room": "room5",
+   "wall_len_a": 1.94,
+   "wall_len_b": 2.19,
+   "diff_cm": 25.0,
+   "face_offset_cm": 2.2,
+   "pass": false,
+   "note": ""
+  },
+  {
+   "room": "room5",
+   "wall_len_a": 1.48,
+   "wall_len_b": 1.28,
+   "diff_cm": 20.0,
+   "face_offset_cm": 4.45,
+   "pass": false,
+   "note": ""
+  },
+  {
+   "room": "room5",
+   "wall_len_a": 1.94,
+   "wall_len_b": 2.19,
+   "diff_cm": 25.0,
+   "face_offset_cm": 17.81,
+   "pass": false,
+   "note": ""
+  },
+  {
+   "room": "room5",
+   "wall_len_a": 1.48,
+   "wall_len_b": 1.28,
+   "diff_cm": 20.0,
+   "face_offset_cm": 20.53,
+   "pass": false,
+   "note": ""
+  },
+  {
+   "room": "room7",
+   "wall_len_a": 2.4,
+   "wall_len_b": 3.35,
+   "diff_cm": 95.0,
+   "face_offset_cm": 2.46,
+   "pass": false,
+   "note": ""
+  },
+  {
+   "room": "room7",
+   "wall_len_a": 2.81,
+   "wall_len_b": 3.95,
+   "diff_cm": 114.0,
+   "face_offset_cm": 2.41,
+   "pass": false,
+   "note": ""
+  },
+  {
+   "room": "room7",
+   "wall_len_a": 0.54,
+   "wall_len_b": null,
+   "diff_cm": null,
+   "face_offset_cm": null,
+   "pass": false,
+   "note": "no matching wall in B"
+  },
+  {
+   "room": "room7",
+   "wall_len_a": 1.13,
+   "wall_len_b": null,
+   "diff_cm": null,
+   "face_offset_cm": null,
+   "pass": false,
+   "note": "no matching wall in B"
+  },
+  {
+   "room": "room7",
+   "wall_len_a": 2.94,
+   "wall_len_b": 3.67,
+   "diff_cm": 73.0,
+   "face_offset_cm": 3.21,
+   "pass": false,
+   "note": ""
+  },
+  {
+   "room": "room7",
+   "wall_len_a": 3.94,
+   "wall_len_b": null,
+   "diff_cm": null,
+   "face_offset_cm": null,
+   "pass": false,
+   "note": "no matching wall in B"
+  }
+ ],
+ "walls_pass": 0,
+ "walls_total": 22
+}
