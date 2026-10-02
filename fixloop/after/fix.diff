@@ -1,0 +1,439 @@
+﻿diff --git a/src/roomscan/bench/repeat.py b/src/roomscan/bench/repeat.py
+index be1489e..4b13de5 100644
+--- a/src/roomscan/bench/repeat.py
++++ b/src/roomscan/bench/repeat.py
+@@ -17,7 +17,7 @@ from scipy.signal import fftconvolve
+ from shapely.geometry import Polygon
+ 
+ from ..tiers.lidar import fused
+-from ..geometry.planes import horizontal_planes, manhattan_yaw, rotate_y, wall_slice
++from ..geometry.planes import horizontal_planes, estimate_yaw, rotate_y
+ 
+ RES = 0.05
+ 
+@@ -25,7 +25,7 @@ RES = 0.05
+ def aligned_band(capture: Path) -> np.ndarray:
+     P, cams, _ = fused(capture)
+     hp = horizontal_planes(P, cam_y=float(np.median(cams[:, 1])))
+-    yaw, _ = manhattan_yaw(wall_slice(P, hp))
++    yaw, _ = estimate_yaw(P, hp)
+     P = rotate_y(P, yaw)
+     return P[(P[:, 1] > hp.floor_y + 1.1) & (P[:, 1] < hp.floor_y + 2.0)][:, [0, 2]]
+ 
+diff --git a/src/roomscan/geometry/planes.py b/src/roomscan/geometry/planes.py
+index a577aae..508908a 100644
+--- a/src/roomscan/geometry/planes.py
++++ b/src/roomscan/geometry/planes.py
+@@ -63,3 +63,44 @@ def rotate_y(P: np.ndarray, yaw: float) -> np.ndarray:
+ def wall_slice(P: np.ndarray, planes: HorizontalPlanes, margin: float = 0.4) -> np.ndarray:
+     top = planes.ceiling_y if planes.ceiling_y is not None else planes.floor_y + 2.2
+     return P[(P[:, 1] > planes.floor_y + margin) & (P[:, 1] < top - margin)]
++
++
++def refine_yaw(P_wall: np.ndarray, yaw0: float, span_deg: float = 2.0, step_deg: float = 0.02,
++               bin_m: float = 0.01, max_pts: int = 300_000) -> tuple[float, dict]:
++    """Refine the Manhattan yaw to ~0.02 deg by maximising wall sharpness.
++
++    For each candidate angle, rotate the wall-band points and histogram them along x and z (1 cm bins).
++    When walls are exactly axis-aligned they collapse into narrow spikes, so sum(h^2) peaks.
++    The coarse normal-histogram estimate (manhattan_yaw) is only good to ~1 deg; a 0.75 deg error was
++    measured between two captures of the same flat, i.e. ~5 cm at the end of a 4 m wall.
++    """
++    X = P_wall[:, [0, 2]]
++    if len(X) > max_pts:
++        X = X[np.random.default_rng(0).choice(len(X), max_pts, replace=False)]
++    X = X - X.mean(0)
++    best = (-1.0, yaw0)
++    scores = []
++    for d in np.arange(-span_deg, span_deg + 1e-9, step_deg):
++        a = yaw0 + np.radians(d)
++        c, s = np.cos(-a), np.sin(-a)
++        xr = c * X[:, 0] - s * X[:, 1]
++        zr = s * X[:, 0] + c * X[:, 1]
++        sc = 0.0
++        for v in (xr, zr):
++            h = np.bincount(((v - v.min()) / bin_m).astype(int)).astype(float)
++            sc += float((h * h).sum())
++        scores.append(sc)
++        if sc > best[0]:
++            best = (sc, a)
++    scores = np.array(scores)
++    return best[1], {"delta_deg": float(np.degrees(best[1] - yaw0)),
++                     "sharpness_gain": float(scores.max() / max(scores[len(scores) // 2], 1e-9))}
++
++
++def estimate_yaw(P: np.ndarray, hp) -> tuple[float, dict]:
++    """Coarse (normals) + fine (sharpness) Manhattan yaw. Single entry point used by every tier and tool."""
++    W = wall_slice(P, hp)
++    yaw0, conc = manhattan_yaw(W)
++    yaw, info = refine_yaw(W, yaw0)
++    info["coarse_concentration"] = conc
++    return yaw, info
+diff --git a/src/roomscan/geometry/rooms.py b/src/roomscan/geometry/rooms.py
+index 35e996b..1f416cd 100644
+--- a/src/roomscan/geometry/rooms.py
++++ b/src/roomscan/geometry/rooms.py
+@@ -275,3 +275,186 @@ def segment_rays(P: np.ndarray, cams: np.ndarray, rays: list[np.ndarray], floor_
+             # fill furniture holes enclosed by the room
+             labels[ndi.binary_fill_holes(m) & (labels == 0) & ~wall] = lab
+     return g, labels, wall, free
++
++
++# ---------------------------------------------------------------------------------------------
++# Structure-only segmentation (fix loop). Rooms depend only on the wall map, not on where the
++# camera stood: doorways are gaps between collinear wall runs; closing them splits the plan.
++# ---------------------------------------------------------------------------------------------
++
++def _runs(row: np.ndarray):
++    """Start/end (exclusive) of True runs in a 1D bool array."""
++    d = np.diff(np.r_[0, row.astype(np.int8), 0])
++    return np.flatnonzero(d == 1), np.flatnonzero(d == -1)
++
++
++def close_doorways(wall: np.ndarray, res: float, gap_min: float = 0.6, gap_max: float = 1.3,
++                   min_run: float = 0.35, min_side: float = 0.10, perp_tol: float = 0.09):
++    """Fill gaps of [gap_min, gap_max] m between two wall runs (each >= min_run m) along rows and columns.
++
++    Short crossings (the thickness of a perpendicular wall) are below min_run, so a corridor's two side
++    walls never count as a doorway. Returns (closed wall map, list of doorways).
++    """
++    closed = wall.copy()
++    gmin, gmax, rmin = int(gap_min / res), int(gap_max / res), int(min_run / res)
++    hits = np.zeros(wall.shape, bool)
++    smin, pt = max(1, int(min_side / res)), max(1, int(perp_tol / res))
++    for axis in (0, 1):
++        # thicken perpendicular to the scan so slightly offset wall pieces share rows
++        k = np.ones((2 * pt + 1, 1), np.uint8)
++        W = cv2.dilate(wall.astype(np.uint8), k).astype(bool) if axis == 0 else \
++            cv2.dilate(wall.T.astype(np.uint8).copy(), k).astype(bool)
++        H = hits if axis == 0 else hits.T
++        for i in range(W.shape[0]):
++            s, e = _runs(W[i])
++            for k2 in range(len(s) - 1):
++                gap = s[k2 + 1] - e[k2]
++                a, b = e[k2] - s[k2], e[k2 + 1] - s[k2 + 1]
++                # one side must be a real wall run; the other may be a perpendicular wall (door at a corner)
++                if gmin <= gap <= gmax and max(a, b) >= rmin and min(a, b) >= smin:
++                    H[i, e[k2]:s[k2 + 1]] = True
++    closed |= hits
++    n, comp = cv2.connectedComponents(hits.astype(np.uint8), connectivity=8)
++    doors = []
++    for t in range(1, n):
++        rr, cc = np.nonzero(comp == t)
++        span_r, span_c = np.ptp(rr) + 1, np.ptp(cc) + 1
++        width = max(span_r, span_c) * res
++        if width < gap_min * 0.9:
++            continue
++        doors.append({"rows": (int(rr.min()), int(rr.max())), "cols": (int(cc.min()), int(cc.max())),
++                      "width_m": float(width), "along": "x" if span_c >= span_r else "z"})
++    return closed, doors
++
++
++def segment_structure(P: np.ndarray, cams: np.ndarray, rays: list[np.ndarray], floor_y: float,
++                      ceiling_y: float | None, res: float = 0.025, min_room_m2: float = 1.0, min_views: int = 2,
++                      band_m: tuple[float, float] = (0.95, 1.6)):
++    """band_m: wall band above the floor used for segmentation. Chosen so that any walk following the
++    capture protocol covers it (a low-pointed walk barely observes >1.6 m; see scripts/height_profile.py)
++    while staying above most furniture (tables, beds, counters < 0.95 m)."""
++    top = ceiling_y if ceiling_y is not None else floor_y + 2.3
++    band = P[(P[:, 1] > floor_y + band_m[0]) & (P[:, 1] < min(top - 0.2, floor_y + band_m[1]))]
++    g = make_grid(P, res)
++    wall = accumulate(g, band) >= 4
++    wall = cv2.morphologyEx(wall.astype(np.uint8), cv2.MORPH_CLOSE, np.ones((3, 3), np.uint8)).astype(bool)
++    seen = raycast_free(g, cams, rays, floor_y, top) >= min_views
++    interior = ndi.binary_fill_holes(cv2.morphologyEx((seen | wall).astype(np.uint8), cv2.MORPH_CLOSE,
++                                                      np.ones((7, 7), np.uint8)).astype(bool))
++    closed, doors = close_doorways(wall, res)
++    wall_d = cv2.dilate(closed.astype(np.uint8), np.ones((3, 3), np.uint8)).astype(bool)
++    free = interior & ~wall_d
++    lab, n = ndi.label(free)          # 4-connectivity: a 1-px leak diagonal through a wall corner is not a door
++    labels = np.zeros_like(lab)
++    j = 0
++    sizes = ndi.sum(np.ones_like(lab), lab, index=np.arange(1, n + 1)) * res * res
++    for i in np.argsort(-sizes):      # deterministic order: largest room first
++        if sizes[i] >= min_room_m2:
++            j += 1
++            labels[lab == i + 1] = j
++    # which rooms each doorway connects: sample both sides perpendicular to the door line
++    for d in doors:
++        r0, r1 = d["rows"]; c0, c1 = d["cols"]
++        rc, cc_ = (r0 + r1) // 2, (c0 + c1) // 2
++        off = int(0.35 / res)
++        if d["along"] == "x":
++            sides = [(min(r1 + off, labels.shape[0] - 1), cc_), (max(r0 - off, 0), cc_)]
++        else:
++            sides = [(rc, min(c1 + off, labels.shape[1] - 1)), (rc, max(c0 - off, 0))]
++        d["rooms"] = sorted({int(labels[s]) for s in sides if labels[s] > 0})
++        d["center"] = g.xz(rc, cc_)
++    return g, labels, closed, free, doors
++
++
++def extend_walls(wall: np.ndarray, seen: np.ndarray, res: float, min_len: float = 0.5, max_ext: float = 1.5) -> np.ndarray:
++    """ROSE2-style structure completion: extend each straight wall run (>= min_len) along its own direction
++    through UNOBSERVED cells, closing it only if it reaches another wall within max_ext. Observed free space
++    is never crossed, so a seen doorway or open area is never walled off by this step."""
++    out = wall.copy()
++    L, E = int(min_len / res), int(max_ext / res)
++    for axis in (0, 1):
++        W = wall if axis == 0 else wall.T
++        S = seen if axis == 0 else seen.T
++        O = out if axis == 0 else out.T
++        n = W.shape[1]
++        for i in range(W.shape[0]):
++            s, e = _runs(W[i])
++            for a, b in zip(s, e):
++                if b - a < L:
++                    continue
++                for direction in (1, -1):
++                    j = b if direction == 1 else a - 1
++                    path = []
++                    while 0 <= j < n and len(path) <= E:
++                        if W[i, j]:
++                            if path:
++                                O[i, path] = True
++                            break
++                        if S[i, j]:
++                            break          # observed free space: do not cross
++                        path.append(j)
++                        j += direction
++    return out
++
++
++def segment_structure_v2(P: np.ndarray, cams: np.ndarray, rays: list[np.ndarray], floor_y: float,
++                         ceiling_y: float | None, res: float = 0.025, min_room_m2: float = 1.0, min_views: int = 2,
++                         band_m: tuple[float, float] = (0.95, 1.6), min_seen_frac: float = 0.25):
++    """Structure-only segmentation with coverage-independent extent.
++
++    1. wall map (protocol-covered band) -> close doorways -> extend walls through unobserved space
++    2. rooms = connected non-wall regions NOT touching the map border (i.e. enclosed by structure);
++       extent is the enclosed region, not the observed region
++    3. an enclosed region is a room only if enough of it was actually observed (min_seen_frac)
++    4. fallback: observed free space that leaks to the border (unclosed walls) keeps the observed extent,
++       and is flagged so intervals can widen
++    """
++    top = ceiling_y if ceiling_y is not None else floor_y + 2.3
++    band = P[(P[:, 1] > floor_y + band_m[0]) & (P[:, 1] < min(top - 0.2, floor_y + band_m[1]))]
++    g = make_grid(P, res)
++    wall = accumulate(g, band) >= 4
++    wall = cv2.morphologyEx(wall.astype(np.uint8), cv2.MORPH_CLOSE, np.ones((3, 3), np.uint8)).astype(bool)
++    seen = raycast_free(g, cams, rays, floor_y, top) >= min_views
++    seen = cv2.morphologyEx(seen.astype(np.uint8), cv2.MORPH_OPEN, np.ones((3, 3), np.uint8)).astype(bool)
++    closed, doors = close_doorways(wall, res)
++    closed = extend_walls(closed, seen & ~closed, res)
++    wall_d = cv2.dilate(closed.astype(np.uint8), np.ones((3, 3), np.uint8)).astype(bool)
++    nonwall = ~wall_d
++    lab, n = ndi.label(nonwall)
++    border = np.unique(np.r_[lab[0], lab[-1], lab[:, 0], lab[:, -1]])
++    labels = np.zeros_like(lab)
++    leaked = np.zeros(lab.shape, bool)
++    cands = []
++    for i in range(1, n + 1):
++        m = lab == i
++        area = m.sum() * res * res
++        if i in border:
++            leaked |= m & seen
++            continue
++        seen_frac = (m & seen).sum() / max(m.sum(), 1)
++        if area >= min_room_m2 and seen_frac >= min_seen_frac:
++            cands.append((area, i, False))
++    # fallback for observed space that is not enclosed
++    if leaked.any():
++        lab2, n2 = ndi.label(leaked & nonwall)
++        for i in range(1, n2 + 1):
++            area = (lab2 == i).sum() * res * res
++            if area >= min_room_m2:
++                cands.append((area, -i, True))
++    j = 0
++    flags = {}
++    for area, i, is_leak in sorted(cands, key=lambda t: -t[0]):
++        j += 1
++        labels[(lab == i) if i > 0 else (lab2 == -i)] = j
++        flags[j] = {"enclosed": not is_leak, "area_m2": float(area)}
++    for d in doors:
++        r0, r1 = d["rows"]; c0, c1 = d["cols"]
++        rc, cc_ = (r0 + r1) // 2, (c0 + c1) // 2
++        off = int(0.35 / res)
++        if d["along"] == "x":
++            sides = [(min(r1 + off, labels.shape[0] - 1), cc_), (max(r0 - off, 0), cc_)]
++        else:
++            sides = [(rc, min(c1 + off, labels.shape[1] - 1)), (rc, max(c0 - off, 0))]
++        d["rooms"] = sorted({int(labels[s]) for s in sides if labels[s] > 0})
++        d["center"] = g.xz(rc, cc_)
++    return g, labels, closed, nonwall, doors, flags
+diff --git a/src/roomscan/geometry/snap.py b/src/roomscan/geometry/snap.py
+index 0d7c03b..db385dd 100644
+--- a/src/roomscan/geometry/snap.py
++++ b/src/roomscan/geometry/snap.py
+@@ -128,11 +128,11 @@ def _support(band, p, q, tol=0.03, step=0.05):
+ 
+ def snap_rooms_local(g: Grid, labels: np.ndarray, P: np.ndarray, floor_y: float, ceiling_y: float | None,
+                      wall: np.ndarray, ring_m: float = 0.35, inner_m: float = 0.10, min_cover: float = 0.5,
+-                     min_room_m2: float = 1.0, prom: float = 0.15):
++                     min_room_m2: float = 1.0, prom: float = 0.15, band_m: tuple[float, float] = (0.9, 2.1)):
+     """Per-room snapping: wall-face lines come only from wall points in a ring around THIS room,
+     so furniture and other rooms' walls cannot add spurious edges."""
+     top = ceiling_y if ceiling_y is not None else floor_y + 2.3
+-    band = P[(P[:, 1] > floor_y + 0.9) & (P[:, 1] < min(top - 0.15, floor_y + 2.1))]
++    band = P[(P[:, 1] > floor_y + band_m[0]) & (P[:, 1] < min(top - 0.15, floor_y + band_m[1]))]
+     br, bc = g.idx(band[:, 0], band[:, 2])
+     okb = (br >= 0) & (br < g.shape[0]) & (bc >= 0) & (bc < g.shape[1])
+     band, br, bc = band[okb], br[okb], bc[okb]
+@@ -207,3 +207,87 @@ def snap_rooms_local(g: Grid, labels: np.ndarray, P: np.ndarray, floor_y: float,
+                 cs_ = float(np.median(np.abs(yc - med)) * 1.4826)
+         rooms.append(RoomGeom(int(lab), poly, lengths, support, _poly_area(poly), ch, cs_))
+     return rooms
++
++
++def _face_near(pts: np.ndarray, axis: int, run_axis: int, run_lo: float, run_hi: float, guess: float,
++               interior_sign: int, win: float = 0.35, bin_m: float = 0.01, strong: float = 0.4):
++    """Pick the wall face near `guess` along `axis`, using points whose run coordinate lies inside the room.
++
++    Among strong histogram peaks in [guess-win, guess+win], return the one closest to the room interior
++    (interior_sign=+1 means the room lies at larger coordinates). That is the room-side face, the surface a
++    tape measure touches; the far face of the same wall is ignored. Returns (face, support) or (None, 0).
++    """
++    shrink = 0.15 * (run_hi - run_lo)
++    sel = pts[(pts[:, run_axis] > run_lo + shrink) & (pts[:, run_axis] < run_hi - shrink) &
++              (np.abs(pts[:, axis] - guess) < win)]
++    if len(sel) < 40:
++        return None, 0.0
++    v = sel[:, axis]
++    edges = np.arange(guess - win, guess + win + bin_m, bin_m)
++    h, _ = np.histogram(v, bins=edges)
++    h = ndi.gaussian_filter1d(h.astype(float), 1.0)
++    pk, _ = find_peaks(h, height=strong * h.max(), distance=4)
++    if len(pk) == 0:
++        return None, 0.0
++    centres = (edges[pk] + edges[pk + 1]) / 2
++    face = float(centres.max() if interior_sign > 0 else centres.min())
++    # refine: median of points within 2 cm of the chosen peak (sub-bin precision)
++    near = v[np.abs(v - face) < 0.02]
++    face = float(np.median(near)) if len(near) > 10 else face
++    on = sel[np.abs(sel[:, axis] - face) < 0.03][:, run_axis]
++    b = np.arange(run_lo + shrink, run_hi - shrink + 0.05, 0.05)
++    support = float((np.histogram(on, bins=b)[0] > 2).mean()) if len(b) > 1 else 0.0
++    return face, support
++
++
++def snap_rooms_rect(g: Grid, labels: np.ndarray, P: np.ndarray, floor_y: float, ceiling_y: float | None,
++                    wall: np.ndarray, min_fill: float = 0.80, min_room_m2: float = 1.0,
++                    band_m: tuple[float, float] = (0.95, 1.6)):
++    """Rectangle-first room extraction (stable across captures).
++
++    Each room is first modelled as an axis-aligned rectangle whose four sides are snapped independently to
++    the room-side wall face (sub-cm median of the face points). Only if the room mask fills less than
++    `min_fill` of that rectangle (an L-shape or similar) do we fall back to the rectilinear cell polygon,
++    and the room is flagged. Few free parameters -> the same flat gives the same numbers on every walk.
++    """
++    top = ceiling_y if ceiling_y is not None else floor_y + 2.3
++    band = P[(P[:, 1] > floor_y + band_m[0]) & (P[:, 1] < min(top - 0.15, floor_y + band_m[1]))]
++    ceil_pts = P[np.abs(P[:, 1] - ceiling_y) < 0.08] if ceiling_y is not None else None
++    fallback = {r.label: r for r in snap_rooms_local(g, labels, P, floor_y, ceiling_y, wall)}
++    rooms, shapes = [], {}
++    for lab in np.unique(labels):
++        if lab == 0:
++            continue
++        m = labels == lab
++        if m.sum() * g.res ** 2 < min_room_m2:
++            continue
++        rr, cc = np.nonzero(m)
++        xs = g.x0 + (cc + 0.5) * g.res; zs = g.z0 + (rr + 0.5) * g.res
++        xl, xr = np.percentile(xs, 1), np.percentile(xs, 99)
++        zb, zt = np.percentile(zs, 1), np.percentile(zs, 99)
++        L, sL = _face_near(band, 0, 2, zb, zt, xl, +1)
++        R, sR = _face_near(band, 0, 2, zb, zt, xr, -1)
++        B, sB = _face_near(band, 2, 0, xl, xr, zb, +1)
++        T, sT = _face_near(band, 2, 0, xl, xr, zt, -1)
++        L = xl if L is None else L; R = xr if R is None else R
++        B = zb if B is None else B; T = zt if T is None else T
++        rect_area = max((R - L) * (T - B), 1e-6)
++        fill = m.sum() * g.res ** 2 / rect_area
++        if fill < min_fill and lab in fallback:
++            rooms.append(fallback[lab]); shapes[lab] = {"shape": "rectilinear", "fill": float(fill)}
++            continue
++        poly = [(L, B), (R, B), (R, T), (L, T)]
++        lengths = [R - L, T - B, R - L, T - B]
++        support = [sB, sR, sT, sL]
++        ch = cs_ = None
++        if ceil_pts is not None:
++            r2, c2 = g.idx(ceil_pts[:, 0], ceil_pts[:, 2])
++            ok = (r2 >= 0) & (r2 < g.shape[0]) & (c2 >= 0) & (c2 < g.shape[1])
++            inside = np.zeros(len(ceil_pts), bool); inside[ok] = m[r2[ok], c2[ok]]
++            yc = ceil_pts[inside, 1]
++            if len(yc) > 200:
++                med = float(np.median(yc)); ch = med - floor_y
++                cs_ = float(np.median(np.abs(yc - med)) * 1.4826)
++        rooms.append(RoomGeom(int(lab), poly, [float(x) for x in lengths], support, float(rect_area), ch, cs_))
++        shapes[lab] = {"shape": "rectangle", "fill": float(fill)}
++    return rooms, shapes
+diff --git a/src/roomscan/tiers/lidar.py b/src/roomscan/tiers/lidar.py
+index f4a1692..c9636aa 100644
+--- a/src/roomscan/tiers/lidar.py
++++ b/src/roomscan/tiers/lidar.py
+@@ -65,20 +65,21 @@ def fused(capture: Path, stride: int = 6, voxel: float = 0.015):
+ 
+ 
+ def run(capture: Path, drift_correction: bool = True) -> PropertyPlan:
+-    from ..geometry.planes import horizontal_planes, manhattan_yaw, rotate_y, wall_slice
+-    from ..geometry.rooms import segment_rays
+-    from ..geometry.snap import snap_rooms_local
++    from ..geometry.planes import horizontal_planes, estimate_yaw, rotate_y
++    from ..geometry.rooms import segment_structure_v2
++    from ..geometry.snap import snap_rooms_rect
+ 
+     P, cams, rays = fused(capture)
+     warnings: list[str] = []
+     if drift_correction:
+         warnings.append("drift correction not implemented yet: poses used as reported by ARKit")
+     hp = horizontal_planes(P, cam_y=float(np.median(cams[:, 1])))
+-    yaw, conc = manhattan_yaw(wall_slice(P, hp))
++    yaw, yinfo = estimate_yaw(P, hp)
++    conc = yinfo["coarse_concentration"]
+     P, cams = rotate_y(P, yaw), rotate_y(cams, yaw)
+     rays = [rotate_y(r, yaw) for r in rays]
+-    g, labels, wall, free = segment_rays(P, cams, rays, hp.floor_y, hp.ceiling_y)
+-    geoms = snap_rooms_local(g, labels, P, hp.floor_y, hp.ceiling_y, wall)
++    g, labels, wall, free, doors, flags = segment_structure_v2(P, cams, rays, hp.floor_y, hp.ceiling_y)
++    geoms, shapes = snap_rooms_rect(g, labels, P, hp.floor_y, hp.ceiling_y, wall)
+ 
+     cal = calibration.load()["lidar"]
+     rooms = []
+@@ -88,27 +89,30 @@ def run(capture: Path, drift_correction: bool = True) -> PropertyPlan:
+         for i in range(n):
+             p, q = rg.polygon[i], rg.polygon[(i + 1) % n]
+             q_support = max(rg.wall_support[i], 0.15)
++            if not flags.get(rg.label, {}).get("enclosed", True):
++                q_support *= 0.5          # extent from observation only: widen honestly
+             walls.append(Wall(p, q, Interval.from_rel(rg.wall_lengths[i], calibration.inflate(cal["wall"], q_support))))
+         if rg.ceiling_height is not None:
+             ceil = Interval.from_abs(rg.ceiling_height, max(0.01, 2 * (rg.ceiling_spread or 0.0)))
+         else:
+             ceil = None
+             warnings.append(f"room{k}: ceiling not observed in capture; ceiling height not reported")
++        if not flags.get(rg.label, {}).get("enclosed", True):
++            warnings.append(f"room{k}: not enclosed by detected walls; extent from observed space only (intervals widened)")
+         rooms.append(Room(room_id=f"room{k}", walls=walls, ceiling_height_m=ceil,
+                           floor_area_m2=Interval.from_rel(rg.area_m2, cal["area"])))
+ 
+-    # adjacency: watershed labels that touch through free space (a doorway or open boundary)
+-    import cv2
++    # adjacency: rooms joined by a detected doorway
+     lab_to_id = {rg.label: f"room{k}" for k, rg in enumerate(geoms, 1)}
+     adj = set()
+-    for la in lab_to_id:
+-        ring = cv2.dilate((labels == la).astype(np.uint8), np.ones((3, 3), np.uint8)).astype(bool)
+-        for lb in np.unique(labels[ring]):
+-            if lb != la and lb in lab_to_id:
+-                adj.add(tuple(sorted((lab_to_id[la], lab_to_id[lb]))))
++    for d in doors:
++        ids = [lab_to_id[l] for l in d.get("rooms", []) if l in lab_to_id]
++        if len(ids) == 2:
++            adj.add(tuple(sorted(ids)))
+ 
+     return PropertyPlan(capture_id=capture.name, tier="lidar", rooms=rooms, adjacency=sorted(adj), warnings=warnings,
+                         input_quality={"frames": int(len(cams)), "manhattan_concentration": round(conc, 3),
+                                        "floor_spread_m": round(hp.floor_spread_m, 4),
+                                        "loop_gap_m": round(float(np.linalg.norm(cams[-1] - cams[0])), 3),
+-                                       "yaw_deg": round(float(np.degrees(yaw)), 3)})
++                                       "yaw_deg": round(float(np.degrees(yaw)), 3),
++                                       "yaw_refine_delta_deg": round(yinfo["delta_deg"], 3)})
