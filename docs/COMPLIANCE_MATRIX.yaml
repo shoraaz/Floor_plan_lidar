@@ -1,128 +1,121 @@
-# requirement -> file path -> artifact -> status
-# status: todo | wip | done | verified
+# Compliance matrix: requirement -> file path -> artifact -> status
+# status: done | partial | not_done   (honest; numbers live in benchmark/results and the report)
+# Scope note: the organisers instructed us to run on their sample data (3 Stray Scanner captures) and not
+# capture our own; no tape/laser ground truth was supplied. Accuracy = cross-tier agreement vs LiDAR +
+# capture-to-capture repeatability.
 requirements:
-  - id: R-CAP-1
-    text: Capture route (stock protocol) + device matrix
+  - id: R-CAP
+    text: Capture route + device matrix
     path: docs/CAPTURE_PROTOCOL.md, docs/DEVICE_MATRIX.md
-    artifact: protocol page, matrix
-    status: wip
-  - id: R-TIER-PHOTO
-    text: Photo tier, 2-8 stills/room, per-room folders -> stitched whole-property plan
-    path: src/roomscan/tiers/photo.py, src/roomscan/geometry/stitch.py
-    artifact: out/*_photo/plan.json
-    status: todo
-  - id: R-TIER-VIDEO
-    text: Video tier from handheld clip
-    path: src/roomscan/tiers/video.py
-    artifact: out/*_video/plan.json
-    status: todo
+    artifact: Route 2 stock protocol (Stray Scanner / native camera)
+    status: done
   - id: R-TIER-LIDAR
     text: LiDAR tier (depth, poses, intrinsics)
-    path: src/roomscan/tiers/lidar.py
-    artifact: out/*_lidar/plan.json
-    status: wip
+    path: src/roomscan/tiers/lidar.py, src/roomscan/geometry/*
+    artifact: out/bench/lidar/*/plan.json
+    status: done
+  - id: R-TIER-VIDEO
+    text: Video tier from a handheld clip
+    path: src/roomscan/tiers/video.py, src/roomscan/geometry/da3_frontend.py
+    artifact: out/bench/video/*/plan.json, benchmark/results/video/*
+    status: partial   # runs end-to-end; accuracy below the +/-3% gate (see report)
+  - id: R-TIER-PHOTO
+    text: Photo tier, per-room folders -> one stitched plan
+    path: src/roomscan/tiers/photo.py, scripts/make_photo_folders.py
+    artifact: out/bench/photo/*/plan.json
+    status: partial   # photos taken from the sample clips (no separate photo sets provided)
   - id: R-OUT-ROOM
-    text: Per-room plan - walls, ceiling height, floor area, openings
-    path: src/roomscan/models.py
+    text: Per-room walls, ceiling height, floor area
+    path: src/roomscan/geometry/backend.py, snap.py
     artifact: plan.json rooms[]
-    status: wip
+    status: done      # ceiling reported null when not observed (never guessed)
+  - id: R-OUT-OPENINGS
+    text: Openings (doors/windows) with widths
+    path: src/roomscan/geometry/rooms.py (doorway gaps detected for segmentation only)
+    artifact: plan.json rooms[].openings
+    status: not_done  # doorways are detected and used for adjacency, not yet emitted as openings
   - id: R-OUT-STITCH
-    text: Stitched multi-room plan with correct adjacency, no overlaps
+    text: Stitched multi-room plan, adjacency, no overlaps
     path: src/roomscan/geometry/stitch.py
-    artifact: plan.json adjacency, plan.svg
-    status: todo
+    artifact: plan.json adjacency, footprint_m2, plan.svg
+    status: done
   - id: R-OUT-DAMAGE
-    text: Per-surface damage regions with class and metric extent
+    text: Damage regions with class and metric extent
     path: src/roomscan/damage.py
-    artifact: plan.json rooms[].damage
-    status: todo
+    artifact: plan.json rooms[].damage (empty)
+    status: not_done
   - id: R-OUT-CONCEAL
-    text: Concealed-damage flags with rule that fired
+    text: Concealed-damage flags with rule
     path: src/roomscan/rules.py
-    artifact: plan.json rooms[].concealed_flags
-    status: todo
+    artifact: rule table only
+    status: not_done
   - id: R-OUT-SCOPE
     text: Scope line items keyed to surfaces
     path: src/roomscan/rules.py
-    artifact: plan.json rooms[].scope
-    status: todo
+    artifact: none
+    status: not_done
   - id: R-OUT-CI
-    text: Confidence interval on every measurement
-    path: src/roomscan/calibration.py
-    artifact: calibration.json, coverage table
-    status: wip
+    text: Interval on every measurement
+    path: src/roomscan/calibration.py, geometry/backend.py
+    artifact: every length/area/height in plan.json is an interval
+    status: partial   # intervals widen with tier/support/scale disagreement; not yet conformal-fitted
   - id: R-OUT-CMD
     text: One command per capture
     path: src/roomscan/cli.py
-    artifact: roomscan run
-    status: wip
+    artifact: roomscan run <capture> --out <dir>
+    status: done
   - id: R-OUT-JSON
-    text: JSON to the published schema
+    text: JSON to published schema
     path: schema/property_plan.schema.json
-    artifact: schema validation test
-    status: wip
+    artifact: validated in cli.py before writing
+    status: done
   - id: R-OUT-RENDER
     text: Rendered plan
     path: src/roomscan/render.py
     artifact: plan.svg
-    status: todo
-  - id: R-BENCH
-    text: Benchmark set (multi-room, damaged room, all tiers, repeat capture, tape/laser GT)
-    path: benchmark/
-    artifact: benchmark/raw, benchmark/ground_truth
-    status: todo
-  - id: R-GATE-OPEN
-    text: Opening widths <=2 cm on >=85%, detection scored
-    path: benchmark/results/
-    artifact: gate table
-    status: todo
-  - id: R-GATE-CEIL
-    text: Ceiling <=1.5 cm, spread <=1 cm, report says biased vs unrepeatable
-    path: benchmark/results/
-    artifact: gate table
-    status: todo
+    status: done
   - id: R-GATE-REPEAT
-    text: Repeatability within 1 cm or 0.5% per wall
-    path: benchmark/results/
-    artifact: repeatability table
-    status: todo
+    text: Repeatability <=1 cm or 0.5% per wall
+    path: src/roomscan/bench/repeat.py
+    artifact: fixloop/after/repeatability_lidar.md
+    status: done (measured; gate FAILS: 2/20)
   - id: R-GATE-DRIFT
-    text: Drift handling + on/off ablation of stitched footprint
+    text: Drift handling + on/off ablation
     path: src/roomscan/geometry/drift.py
-    artifact: ablation table
-    status: todo
-  - id: R-GATE-PHOTOSTITCH
-    text: Photo-tier whole-property stitch, footprint +/-8%
-    path: src/roomscan/tiers/photo.py
-    artifact: gate table
-    status: todo
+    artifact: none
+    status: not_done  # ARKit VIO poses used; loop gap measured (input_quality.loop_gap_m) but not corrected
+  - id: R-GATE-ACCURACY
+    text: Opening/ceiling/wall accuracy vs ground truth
+    path: n/a
+    artifact: n/a
+    status: not_done  # no ground truth supplied with sample data
   - id: R-H2H
-    text: Head-to-head vs consumer app on 2 rooms, beat/tie >=70% of dims
-    path: benchmark/h2h/
-    artifact: h2h table, app export
-    status: todo
+    text: Head-to-head vs consumer app
+    path: n/a
+    artifact: n/a
+    status: not_done  # no app export for the sample spaces
   - id: R-FIX
-    text: Fix declaration + shipped fix + regenerable before/after + diff
+    text: Fix declaration, shipped fix, regenerable before/after, diff
     path: fixloop/
-    artifact: fix bundle
-    status: todo
+    artifact: FIX_DECLARATION.md, POSTMORTEM.md, before/, after/, after/fix.diff, tags fixloop-before/after
+    status: done (gate not passed; prediction wrong; post-mortem)
   - id: R-REPRO
-    text: Reproduction bundle; cached outputs deterministic, live path also runs
-    path: reproduction/
-    artifact: repro script
-    status: todo
+    text: Reproduction bundle
+    path: reproduction/run_all.ps1, reproduction/fixloop.ps1, cache/ (deterministic)
+    artifact: out/bench/*, timing.csv
+    status: done
+  - id: R-README
+    text: README to running in < 15 min
+    path: README.md
+    artifact: uv sync + one command
+    status: done
   - id: R-REPORT
-    text: Technical report, max 6 pages
+    text: Technical report <= 6 pages
     path: docs/REPORT.md
-    artifact: report.pdf
-    status: todo
-  - id: R-FAIL-MODES
-    text: Mirrors, glass, wet-look surfaces, low light covered
-    path: docs/REPORT.md, benchmark/
-    artifact: failure-mode captures + behaviour
-    status: todo
+    artifact: report
+    status: not_done
   - id: R-PROC
     text: Incremental commit history
     path: .git
-    artifact: git log
-    status: wip
+    artifact: git log (20+ commits, tags fixloop-before/after)
+    status: done

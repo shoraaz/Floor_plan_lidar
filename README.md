@@ -1,54 +1,59 @@
 # roomscan
 
-Phone capture -> dimensioned, stitched whole-property floor plan + damage report.
-Three input tiers (photos, video, LiDAR), one output contract, calibrated intervals everywhere.
-Fully free stack. Everything runs locally.
+Phone capture -> dimensioned, stitched floor plan with an interval on every number.
+Three input tiers (LiDAR, video, photos) share one geometry backend and one output contract
+(`schema/property_plan.schema.json`). Everything runs locally; no external services.
 
-## Quickstart (target: < 15 min on a clean machine)
+## Quickstart (clean Windows/Linux machine, ~10 min + model download)
+
+```bash
+# 1. Python 3.12 + uv (https://docs.astral.sh/uv/)
+uv sync                                   # installs deps incl. CUDA 12.8 PyTorch (RTX 50-series OK)
+# 2. One command per capture (tier auto-detected)
+uv run roomscan run <capture> --out out/<name>
+```
+
+| `<capture>` | Detected tier | What is used |
+|---|---|---|
+| Stray Scanner folder (`rgb.mp4`, `depth/`, `confidence/`, `odometry.csv`, `camera_matrix.csv`) | `lidar` | depth + ARKit poses + intrinsics |
+| A video file (`.mp4`/`.mov`), or a Stray folder with `--tier video` | `video` | the RGB clip only |
+| A folder of per-room photo folders | `photo` | the photos only (no depth, poses, intrinsics) |
+
+Outputs in `--out`: `plan.json` (schema-validated before writing), `plan.svg` (rendered plan).
+First run of the video/photo tiers downloads two Apache-2.0 models from Hugging Face
+(`depth-anything/DA3-LARGE-1.1`, `depth-anything/DA3METRIC-LARGE`, ~2.8 GB). A CUDA GPU is strongly
+recommended for video/photo (8 GB is enough); the LiDAR tier is CPU-only.
+
+## Reproduce every reported number
 
 ```powershell
-# Use Python 3.11 or 3.12 (Open3D / PyTorch wheels lag behind 3.14)
-py -3.12 -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-pip install -e .
-python scripts/fetch_weights.py          # pretrained weights, fetched not committed
-
-# One command per capture
-roomscan run <capture_path> --out out/<name>
+.\reproduction\run_all.ps1                     # all tiers on all sample captures -> out/bench/, timing.csv
+.\reproduction\fixloop.ps1 -Label after        # fix-loop run (checkout tag fixloop-before / fixloop-after)
+uv run python scripts/make_photo_folders.py ...   # rebuild photo-tier inputs from the sample clips
+uv run python scripts/tier_compare.py <lidar_plan> <tier_plan>
+uv run roomscan repeat <capA> <capB> --plan-a ... --plan-b ...
 ```
+Intermediate results are cached under `cache/` keyed by input path, so reruns are deterministic;
+deleting `cache/` re-runs the live path.
 
-`<capture_path>` is auto-detected:
+## How it works (one paragraph per stage)
 
-| Input | Detected as |
-|---|---|
-| Folder with `rgb.mp4`, `depth/`, `odometry.csv`, `camera_matrix.csv` (Stray Scanner export) | `lidar` |
-| A single video file (`.mov`/`.mp4`) | `video` |
-| Folder of subfolders, one per room, each containing 2-8 stills | `photo` |
+- **LiDAR front end** (`tiers/lidar.py`, `geometry/pointcloud.py`): back-projects confidence-filtered depth with
+  ARKit poses. Stray Scanner stores poses camera->world with an OpenCV camera frame in an ARKit y-up world
+  (verified: `scripts/test_convention.py`).
+- **Video front end** (`tiers/video.py`, `geometry/da3_frontend.py`): keyframes -> Depth Anything 3 any-view model
+  in overlapping 24-frame chunks (poses + depth), chained by depth ratios on shared frames, metric scale from
+  DA3METRIC (units verified against LiDAR on the same frames). COLMAP SfM is kept as `frontend="colmap"`
+  (registered only 13-21% of keyframes on low-texture walls).
+- **Photo front end** (`tiers/photo.py`): one joint DA3 pass over all room folders puts every room in one frame
+  (stitching), metric scale as above.
+- **Shared backend** (`geometry/backend.py`): floor/ceiling planes -> Manhattan yaw (coarse normals + 0.02 deg
+  sharpness search) -> wall map in a 0.95-1.6 m band -> doorway closure -> wall extension through unobserved
+  space -> rooms = wall-enclosed regions -> rectangle-first snapping of each side to the room-side wall face ->
+  per-room ceiling -> intervals (`calibration.py`) -> stitch checks (`geometry/stitch.py`) -> JSON + SVG.
 
-Override with `--tier lidar|video|photo`.
+## Known limits (see report)
 
-## Outputs (per capture)
-
-- `plan.json` - validates against `schema/property_plan.schema.json`
-- `plan.svg` - rendered whole-property floor plan
-- `report.md` - human-readable summary incl. flags and warnings
-
-## Layout
-
-```
-src/roomscan/
-  models.py        Interval + plan dataclasses (every number carries an interval)
-  calibration.py   split-conformal intervals, coverage checks
-  cli.py           `roomscan run`
-  tiers/           lidar.py, video.py, photo.py -> all emit RoomGeometry
-  geometry/        planes.py, drift.py, stitch.py
-  damage.py        damage regions + metric extent
-  rules.py         concealed-damage rules + scope line items
-  render.py        SVG plan
-docs/              capture protocol, device matrix, compliance matrix, roadmap
-benchmark/         ground truth, raw data, results
-fixloop/           fix declaration, before/after bundle
-```
-
-See `docs/PLAN.md` for the build order and `docs/COMPLIANCE_MATRIX.yaml` for requirement tracking.
+Opening detection, damage detection, concealed-damage rules and scope items are not implemented in this
+submission; the schema fields exist and are emitted empty. No ground truth was supplied with the sample data,
+so accuracy is reported as cross-tier agreement against LiDAR and capture-to-capture repeatability.
