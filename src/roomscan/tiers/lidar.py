@@ -23,7 +23,7 @@ def load_stray(p: Path, stride: int = 6):
     """Return per-frame (T_world_cam, K_depth, depth_path, conf_path) subsampled by `stride`.
 
     Intrinsics are rescaled from RGB resolution to the depth map resolution.
-    ARKit camera axes: x right, y up, z backward (camera looks down -z).
+    Camera frame is OpenCV (x right, y down, z forward); world is ARKit y-up. See geometry/pointcloud.py.
     """
     odo = pd.read_csv(p / "odometry.csv", skipinitialspace=True)
     odo.columns = [c.strip() for c in odo.columns]
