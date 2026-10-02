@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+out/
+weights/
+cache/
+.pytest_cache/
+# raw captures are large: store outside git or via git-lfs / volume
+benchmark/raw/**/*.mp4
+benchmark/raw/**/*.mov
+benchmark/raw/**/*.png
+benchmark/raw/**/*.jpg
+benchmark/raw/**/*.heic
+!benchmark/raw/README.md

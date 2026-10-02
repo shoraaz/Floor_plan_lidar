@@ -1,0 +1,128 @@
+# requirement -> file path -> artifact -> status
+# status: todo | wip | done | verified
+requirements:
+  - id: R-CAP-1
+    text: Capture route (stock protocol) + device matrix
+    path: docs/CAPTURE_PROTOCOL.md, docs/DEVICE_MATRIX.md
+    artifact: protocol page, matrix
+    status: wip
+  - id: R-TIER-PHOTO
+    text: Photo tier, 2-8 stills/room, per-room folders -> stitched whole-property plan
+    path: src/roomscan/tiers/photo.py, src/roomscan/geometry/stitch.py
+    artifact: out/*_photo/plan.json
+    status: todo
+  - id: R-TIER-VIDEO
+    text: Video tier from handheld clip
+    path: src/roomscan/tiers/video.py
+    artifact: out/*_video/plan.json
+    status: todo
+  - id: R-TIER-LIDAR
+    text: LiDAR tier (depth, poses, intrinsics)
+    path: src/roomscan/tiers/lidar.py
+    artifact: out/*_lidar/plan.json
+    status: wip
+  - id: R-OUT-ROOM
+    text: Per-room plan - walls, ceiling height, floor area, openings
+    path: src/roomscan/models.py
+    artifact: plan.json rooms[]
+    status: wip
+  - id: R-OUT-STITCH
+    text: Stitched multi-room plan with correct adjacency, no overlaps
+    path: src/roomscan/geometry/stitch.py
+    artifact: plan.json adjacency, plan.svg
+    status: todo
+  - id: R-OUT-DAMAGE
+    text: Per-surface damage regions with class and metric extent
+    path: src/roomscan/damage.py
+    artifact: plan.json rooms[].damage
+    status: todo
+  - id: R-OUT-CONCEAL
+    text: Concealed-damage flags with rule that fired
+    path: src/roomscan/rules.py
+    artifact: plan.json rooms[].concealed_flags
+    status: todo
+  - id: R-OUT-SCOPE
+    text: Scope line items keyed to surfaces
+    path: src/roomscan/rules.py
+    artifact: plan.json rooms[].scope
+    status: todo
+  - id: R-OUT-CI
+    text: Confidence interval on every measurement
+    path: src/roomscan/calibration.py
+    artifact: calibration.json, coverage table
+    status: wip
+  - id: R-OUT-CMD
+    text: One command per capture
+    path: src/roomscan/cli.py
+    artifact: roomscan run
+    status: wip
+  - id: R-OUT-JSON
+    text: JSON to the published schema
+    path: schema/property_plan.schema.json
+    artifact: schema validation test
+    status: wip
+  - id: R-OUT-RENDER
+    text: Rendered plan
+    path: src/roomscan/render.py
+    artifact: plan.svg
+    status: todo
+  - id: R-BENCH
+    text: Benchmark set (multi-room, damaged room, all tiers, repeat capture, tape/laser GT)
+    path: benchmark/
+    artifact: benchmark/raw, benchmark/ground_truth
+    status: todo
+  - id: R-GATE-OPEN
+    text: Opening widths <=2 cm on >=85%, detection scored
+    path: benchmark/results/
+    artifact: gate table
+    status: todo
+  - id: R-GATE-CEIL
+    text: Ceiling <=1.5 cm, spread <=1 cm, report says biased vs unrepeatable
+    path: benchmark/results/
+    artifact: gate table
+    status: todo
+  - id: R-GATE-REPEAT
+    text: Repeatability within 1 cm or 0.5% per wall
+    path: benchmark/results/
+    artifact: repeatability table
+    status: todo
+  - id: R-GATE-DRIFT
+    text: Drift handling + on/off ablation of stitched footprint
+    path: src/roomscan/geometry/drift.py
+    artifact: ablation table
+    status: todo
+  - id: R-GATE-PHOTOSTITCH
+    text: Photo-tier whole-property stitch, footprint +/-8%
+    path: src/roomscan/tiers/photo.py
+    artifact: gate table
+    status: todo
+  - id: R-H2H
+    text: Head-to-head vs consumer app on 2 rooms, beat/tie >=70% of dims
+    path: benchmark/h2h/
+    artifact: h2h table, app export
+    status: todo
+  - id: R-FIX
+    text: Fix declaration + shipped fix + regenerable before/after + diff
+    path: fixloop/
+    artifact: fix bundle
+    status: todo
+  - id: R-REPRO
+    text: Reproduction bundle; cached outputs deterministic, live path also runs
+    path: reproduction/
+    artifact: repro script
+    status: todo
+  - id: R-REPORT
+    text: Technical report, max 6 pages
+    path: docs/REPORT.md
+    artifact: report.pdf
+    status: todo
+  - id: R-FAIL-MODES
+    text: Mirrors, glass, wet-look surfaces, low light covered
+    path: docs/REPORT.md, benchmark/
+    artifact: failure-mode captures + behaviour
+    status: todo
+  - id: R-PROC
+    text: Incremental commit history
+    path: .git
+    artifact: git log
+    status: wip
