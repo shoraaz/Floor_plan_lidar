@@ -69,7 +69,7 @@ class ScopeItem:
 class Room:
     room_id: str
     walls: list[Wall]
-    ceiling_height_m: Interval
+    ceiling_height_m: Optional[Interval]   # None = ceiling not observed (never guessed)
     floor_area_m2: Interval
     openings: list[Opening] = field(default_factory=list)
     damage: list[DamageRegion] = field(default_factory=list)

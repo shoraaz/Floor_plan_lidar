@@ -31,7 +31,7 @@
           "type": "object", "required": ["start", "end", "length_m"],
           "properties": {"start": {"type": "array"}, "end": {"type": "array"}, "length_m": {"$ref": "#/$defs/interval"}}
         }},
-        "ceiling_height_m": {"$ref": "#/$defs/interval"},
+        "ceiling_height_m": {"oneOf": [{"$ref": "#/$defs/interval"}, {"type": "null"}]},
         "floor_area_m2": {"$ref": "#/$defs/interval"},
         "openings": {"type": "array", "items": {
           "type": "object", "required": ["kind", "wall_index", "offset_m", "width_m"],

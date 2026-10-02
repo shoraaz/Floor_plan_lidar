@@ -47,9 +47,14 @@ def run(capture: Path, out: Path, tier: str, no_drift_correction: bool):
     plan = damage.attach(plan, capture)
     plan = rules.apply(plan)
 
-    (out / "plan.json").write_text(json.dumps(plan.to_dict(), indent=2))
+    doc = json.loads(json.dumps(plan.to_dict()))  # tuples -> lists, as written to disk
+    import jsonschema
+    schema = json.loads((Path(__file__).resolve().parents[2] / "schema" / "property_plan.schema.json").read_text())
+    jsonschema.validate(doc, schema)
+    (out / "plan.json").write_text(json.dumps(doc, indent=2))
     render.to_svg(plan, out / "plan.svg")
-    click.echo(f"[{tier}] wrote {out/'plan.json'} and {out/'plan.svg'}")
+    click.echo(f"[{tier}] {len(plan.rooms)} rooms, footprint {plan.footprint_m2.value:.2f} m2, "
+               f"{len(plan.warnings)} warnings -> {out}")
 
 
 if __name__ == "__main__":

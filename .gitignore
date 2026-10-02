@@ -15,3 +15,4 @@ benchmark/raw/**/*.heic
 !benchmark/raw/README.md
 
 *.log
+cache/
