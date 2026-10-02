@@ -23,6 +23,8 @@ dependencies = [
     "transformers>=4.45",
     "huggingface_hub",
     "pycolmap",
+    "depth-anything-3>=0.1.1",
+    "addict>=2.4.0",
 ]
 
 [dependency-groups]

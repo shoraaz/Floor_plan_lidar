@@ -65,54 +65,9 @@ def fused(capture: Path, stride: int = 6, voxel: float = 0.015):
 
 
 def run(capture: Path, drift_correction: bool = True) -> PropertyPlan:
-    from ..geometry.planes import horizontal_planes, estimate_yaw, rotate_y
-    from ..geometry.rooms import segment_structure_v2
-    from ..geometry.snap import snap_rooms_rect
-
+    from ..geometry.backend import plan_from_cloud
     P, cams, rays = fused(capture)
     warnings: list[str] = []
     if drift_correction:
         warnings.append("drift correction not implemented yet: poses used as reported by ARKit")
-    hp = horizontal_planes(P, cam_y=float(np.median(cams[:, 1])))
-    yaw, yinfo = estimate_yaw(P, hp)
-    conc = yinfo["coarse_concentration"]
-    P, cams = rotate_y(P, yaw), rotate_y(cams, yaw)
-    rays = [rotate_y(r, yaw) for r in rays]
-    g, labels, wall, free, doors, flags = segment_structure_v2(P, cams, rays, hp.floor_y, hp.ceiling_y)
-    geoms, shapes = snap_rooms_rect(g, labels, P, hp.floor_y, hp.ceiling_y, wall)
-
-    cal = calibration.load()["lidar"]
-    rooms = []
-    for k, rg in enumerate(geoms, 1):
-        n = len(rg.polygon)
-        walls = []
-        for i in range(n):
-            p, q = rg.polygon[i], rg.polygon[(i + 1) % n]
-            q_support = max(rg.wall_support[i], 0.15)
-            if not flags.get(rg.label, {}).get("enclosed", True):
-                q_support *= 0.5          # extent from observation only: widen honestly
-            walls.append(Wall(p, q, Interval.from_rel(rg.wall_lengths[i], calibration.inflate(cal["wall"], q_support))))
-        if rg.ceiling_height is not None:
-            ceil = Interval.from_abs(rg.ceiling_height, max(0.01, 2 * (rg.ceiling_spread or 0.0)))
-        else:
-            ceil = None
-            warnings.append(f"room{k}: ceiling not observed in capture; ceiling height not reported")
-        if not flags.get(rg.label, {}).get("enclosed", True):
-            warnings.append(f"room{k}: not enclosed by detected walls; extent from observed space only (intervals widened)")
-        rooms.append(Room(room_id=f"room{k}", walls=walls, ceiling_height_m=ceil,
-                          floor_area_m2=Interval.from_rel(rg.area_m2, cal["area"])))
-
-    # adjacency: rooms joined by a detected doorway
-    lab_to_id = {rg.label: f"room{k}" for k, rg in enumerate(geoms, 1)}
-    adj = set()
-    for d in doors:
-        ids = [lab_to_id[l] for l in d.get("rooms", []) if l in lab_to_id]
-        if len(ids) == 2:
-            adj.add(tuple(sorted(ids)))
-
-    return PropertyPlan(capture_id=capture.name, tier="lidar", rooms=rooms, adjacency=sorted(adj), warnings=warnings,
-                        input_quality={"frames": int(len(cams)), "manhattan_concentration": round(conc, 3),
-                                       "floor_spread_m": round(hp.floor_spread_m, 4),
-                                       "loop_gap_m": round(float(np.linalg.norm(cams[-1] - cams[0])), 3),
-                                       "yaw_deg": round(float(np.degrees(yaw)), 3),
-                                       "yaw_refine_delta_deg": round(yinfo["delta_deg"], 3)})
+    return plan_from_cloud(P, cams, rays, capture.name, "lidar", warnings)
