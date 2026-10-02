@@ -275,3 +275,92 @@ def segment_rays(P: np.ndarray, cams: np.ndarray, rays: list[np.ndarray], floor_
             # fill furniture holes enclosed by the room
             labels[ndi.binary_fill_holes(m) & (labels == 0) & ~wall] = lab
     return g, labels, wall, free
+
+
+# ---------------------------------------------------------------------------------------------
+# Structure-only segmentation (fix loop). Rooms depend only on the wall map, not on where the
+# camera stood: doorways are gaps between collinear wall runs; closing them splits the plan.
+# ---------------------------------------------------------------------------------------------
+
+def _runs(row: np.ndarray):
+    """Start/end (exclusive) of True runs in a 1D bool array."""
+    d = np.diff(np.r_[0, row.astype(np.int8), 0])
+    return np.flatnonzero(d == 1), np.flatnonzero(d == -1)
+
+
+def close_doorways(wall: np.ndarray, res: float, gap_min: float = 0.6, gap_max: float = 1.3,
+                   min_run: float = 0.35, min_side: float = 0.10, perp_tol: float = 0.09):
+    """Fill gaps of [gap_min, gap_max] m between two wall runs (each >= min_run m) along rows and columns.
+
+    Short crossings (the thickness of a perpendicular wall) are below min_run, so a corridor's two side
+    walls never count as a doorway. Returns (closed wall map, list of doorways).
+    """
+    closed = wall.copy()
+    gmin, gmax, rmin = int(gap_min / res), int(gap_max / res), int(min_run / res)
+    hits = np.zeros(wall.shape, bool)
+    smin, pt = max(1, int(min_side / res)), max(1, int(perp_tol / res))
+    for axis in (0, 1):
+        # thicken perpendicular to the scan so slightly offset wall pieces share rows
+        k = np.ones((2 * pt + 1, 1), np.uint8)
+        W = cv2.dilate(wall.astype(np.uint8), k).astype(bool) if axis == 0 else \
+            cv2.dilate(wall.T.astype(np.uint8).copy(), k).astype(bool)
+        H = hits if axis == 0 else hits.T
+        for i in range(W.shape[0]):
+            s, e = _runs(W[i])
+            for k2 in range(len(s) - 1):
+                gap = s[k2 + 1] - e[k2]
+                a, b = e[k2] - s[k2], e[k2 + 1] - s[k2 + 1]
+                # one side must be a real wall run; the other may be a perpendicular wall (door at a corner)
+                if gmin <= gap <= gmax and max(a, b) >= rmin and min(a, b) >= smin:
+                    H[i, e[k2]:s[k2 + 1]] = True
+    closed |= hits
+    n, comp = cv2.connectedComponents(hits.astype(np.uint8), connectivity=8)
+    doors = []
+    for t in range(1, n):
+        rr, cc = np.nonzero(comp == t)
+        span_r, span_c = np.ptp(rr) + 1, np.ptp(cc) + 1
+        width = max(span_r, span_c) * res
+        if width < gap_min * 0.9:
+            continue
+        doors.append({"rows": (int(rr.min()), int(rr.max())), "cols": (int(cc.min()), int(cc.max())),
+                      "width_m": float(width), "along": "x" if span_c >= span_r else "z"})
+    return closed, doors
+
+
+def segment_structure(P: np.ndarray, cams: np.ndarray, rays: list[np.ndarray], floor_y: float,
+                      ceiling_y: float | None, res: float = 0.025, min_room_m2: float = 1.0, min_views: int = 2,
+                      band_m: tuple[float, float] = (0.95, 1.6)):
+    """band_m: wall band above the floor used for segmentation. Chosen so that any walk following the
+    capture protocol covers it (a low-pointed walk barely observes >1.6 m; see scripts/height_profile.py)
+    while staying above most furniture (tables, beds, counters < 0.95 m)."""
+    top = ceiling_y if ceiling_y is not None else floor_y + 2.3
+    band = P[(P[:, 1] > floor_y + band_m[0]) & (P[:, 1] < min(top - 0.2, floor_y + band_m[1]))]
+    g = make_grid(P, res)
+    wall = accumulate(g, band) >= 4
+    wall = cv2.morphologyEx(wall.astype(np.uint8), cv2.MORPH_CLOSE, np.ones((3, 3), np.uint8)).astype(bool)
+    seen = raycast_free(g, cams, rays, floor_y, top) >= min_views
+    interior = ndi.binary_fill_holes(cv2.morphologyEx((seen | wall).astype(np.uint8), cv2.MORPH_CLOSE,
+                                                      np.ones((7, 7), np.uint8)).astype(bool))
+    closed, doors = close_doorways(wall, res)
+    wall_d = cv2.dilate(closed.astype(np.uint8), np.ones((3, 3), np.uint8)).astype(bool)
+    free = interior & ~wall_d
+    lab, n = ndi.label(free)          # 4-connectivity: a 1-px leak diagonal through a wall corner is not a door
+    labels = np.zeros_like(lab)
+    j = 0
+    sizes = ndi.sum(np.ones_like(lab), lab, index=np.arange(1, n + 1)) * res * res
+    for i in np.argsort(-sizes):      # deterministic order: largest room first
+        if sizes[i] >= min_room_m2:
+            j += 1
+            labels[lab == i + 1] = j
+    # which rooms each doorway connects: sample both sides perpendicular to the door line
+    for d in doors:
+        r0, r1 = d["rows"]; c0, c1 = d["cols"]
+        rc, cc_ = (r0 + r1) // 2, (c0 + c1) // 2
+        off = int(0.35 / res)
+        if d["along"] == "x":
+            sides = [(min(r1 + off, labels.shape[0] - 1), cc_), (max(r0 - off, 0), cc_)]
+        else:
+            sides = [(rc, min(c1 + off, labels.shape[1] - 1)), (rc, max(c0 - off, 0))]
+        d["rooms"] = sorted({int(labels[s]) for s in sides if labels[s] > 0})
+        d["center"] = g.xz(rc, cc_)
+    return g, labels, closed, free, doors

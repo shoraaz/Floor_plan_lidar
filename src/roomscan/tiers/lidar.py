@@ -66,7 +66,7 @@ def fused(capture: Path, stride: int = 6, voxel: float = 0.015):
 
 def run(capture: Path, drift_correction: bool = True) -> PropertyPlan:
     from ..geometry.planes import horizontal_planes, manhattan_yaw, rotate_y, wall_slice
-    from ..geometry.rooms import segment_rays
+    from ..geometry.rooms import segment_structure
     from ..geometry.snap import snap_rooms_local
 
     P, cams, rays = fused(capture)
@@ -77,7 +77,7 @@ def run(capture: Path, drift_correction: bool = True) -> PropertyPlan:
     yaw, conc = manhattan_yaw(wall_slice(P, hp))
     P, cams = rotate_y(P, yaw), rotate_y(cams, yaw)
     rays = [rotate_y(r, yaw) for r in rays]
-    g, labels, wall, free = segment_rays(P, cams, rays, hp.floor_y, hp.ceiling_y)
+    g, labels, wall, free, doors = segment_structure(P, cams, rays, hp.floor_y, hp.ceiling_y)
     geoms = snap_rooms_local(g, labels, P, hp.floor_y, hp.ceiling_y, wall)
 
     cal = calibration.load()["lidar"]
@@ -97,15 +97,13 @@ def run(capture: Path, drift_correction: bool = True) -> PropertyPlan:
         rooms.append(Room(room_id=f"room{k}", walls=walls, ceiling_height_m=ceil,
                           floor_area_m2=Interval.from_rel(rg.area_m2, cal["area"])))
 
-    # adjacency: watershed labels that touch through free space (a doorway or open boundary)
-    import cv2
+    # adjacency: rooms joined by a detected doorway
     lab_to_id = {rg.label: f"room{k}" for k, rg in enumerate(geoms, 1)}
     adj = set()
-    for la in lab_to_id:
-        ring = cv2.dilate((labels == la).astype(np.uint8), np.ones((3, 3), np.uint8)).astype(bool)
-        for lb in np.unique(labels[ring]):
-            if lb != la and lb in lab_to_id:
-                adj.add(tuple(sorted((lab_to_id[la], lab_to_id[lb]))))
+    for d in doors:
+        ids = [lab_to_id[l] for l in d.get("rooms", []) if l in lab_to_id]
+        if len(ids) == 2:
+            adj.add(tuple(sorted(ids)))
 
     return PropertyPlan(capture_id=capture.name, tier="lidar", rooms=rooms, adjacency=sorted(adj), warnings=warnings,
                         input_quality={"frames": int(len(cams)), "manhattan_concentration": round(conc, 3),

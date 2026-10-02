@@ -128,11 +128,11 @@ def _support(band, p, q, tol=0.03, step=0.05):
 
 def snap_rooms_local(g: Grid, labels: np.ndarray, P: np.ndarray, floor_y: float, ceiling_y: float | None,
                      wall: np.ndarray, ring_m: float = 0.35, inner_m: float = 0.10, min_cover: float = 0.5,
-                     min_room_m2: float = 1.0, prom: float = 0.15):
+                     min_room_m2: float = 1.0, prom: float = 0.15, band_m: tuple[float, float] = (0.9, 2.1)):
     """Per-room snapping: wall-face lines come only from wall points in a ring around THIS room,
     so furniture and other rooms' walls cannot add spurious edges."""
     top = ceiling_y if ceiling_y is not None else floor_y + 2.3
-    band = P[(P[:, 1] > floor_y + 0.9) & (P[:, 1] < min(top - 0.15, floor_y + 2.1))]
+    band = P[(P[:, 1] > floor_y + band_m[0]) & (P[:, 1] < min(top - 0.15, floor_y + band_m[1]))]
     br, bc = g.idx(band[:, 0], band[:, 2])
     okb = (br >= 0) & (br < g.shape[0]) & (bc >= 0) & (bc < g.shape[1])
     band, br, bc = band[okb], br[okb], bc[okb]
