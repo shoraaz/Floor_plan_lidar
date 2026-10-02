@@ -27,16 +27,22 @@ def backproject(depth_mm: np.ndarray, conf: np.ndarray | None, K_depth, T_world_
     return (T_world_cam @ pc)[:3].T
 
 
-def fuse(capture: Path, stride: int = 6, max_frames: int | None = None, **kw) -> tuple[np.ndarray, np.ndarray]:
-    """Return (points Nx3 in ARKit world, camera positions Fx3)."""
+def fuse(capture: Path, stride: int = 6, max_frames: int | None = None, ray_samples: int = 400, **kw):
+    """Return (points Nx3 world, camera positions Fx3, per-frame ray endpoints list[Kx3]).
+
+    Ray endpoints are a random subsample of each frame's points; free space = segments camera->endpoint.
+    """
     frames = load_stray(capture, stride=stride)
     if max_frames:
         frames = frames[:: max(1, len(frames) // max_frames)]
-    pts, cams = [], []
+    rng = np.random.default_rng(0)
+    pts, cams, rays = [], [], []
     for T, (fx, fy, cx, cy), dpath, cpath in frames:
         depth = cv2.imread(str(dpath), cv2.IMREAD_UNCHANGED)
         conf = cv2.imread(str(cpath), cv2.IMREAD_UNCHANGED) if cpath else None
         Kd = scale_intrinsics(fx, fy, cx, cy, depth.shape[1], depth.shape[0])
-        pts.append(backproject(depth, conf, Kd, T, **kw))
+        w = backproject(depth, conf, Kd, T, **kw)
+        pts.append(w)
         cams.append(T[:3, 3])
-    return np.concatenate(pts), np.array(cams)
+        rays.append(w[rng.choice(len(w), min(ray_samples, len(w)), replace=False)] if len(w) else w)
+    return np.concatenate(pts), np.array(cams), rays
