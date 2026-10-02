@@ -57,5 +57,18 @@ def run(capture: Path, out: Path, tier: str, no_drift_correction: bool):
                f"{len(plan.warnings)} warnings -> {out}")
 
 
+@main.command()
+@click.argument("capture_a", type=click.Path(exists=True, path_type=Path))
+@click.argument("capture_b", type=click.Path(exists=True, path_type=Path))
+@click.option("--plan-a", type=click.Path(exists=True, path_type=Path), required=True)
+@click.option("--plan-b", type=click.Path(exists=True, path_type=Path), required=True)
+@click.option("--out", type=click.Path(path_type=Path), default=Path("benchmark/results/repeatability_lidar.md"))
+def repeat(capture_a, capture_b, plan_a, plan_b, out):
+    """Repeatability table for two captures of the same place at the same tier."""
+    from .bench.repeat import report
+    npass, n, diag, rooms = report(capture_a, capture_b, plan_a, plan_b, out)
+    click.echo(f"walls pass {npass}/{n}; ICP rmse {diag['icp_rmse_m']*100:.2f} cm -> {out}")
+
+
 if __name__ == "__main__":
     main()
