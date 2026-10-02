@@ -17,3 +17,14 @@ Findings
 - experiment: snapping band is not the remaining cause.
 - Remaining error source: room EXTENT. Structure-only split takes room area from ray-cast seen space, which
   depends on coverage; footprint diff grew 0.85% -> ~9%. Watershed + snapping previously masked this.
+
+| it4 | + ROSE2-style wall extension through unobserved space; rooms = wall-enclosed regions (fallback: observed extent, flagged + widened) | 9/8 | 0.86, 0.69, 0.69, 0.86, 0.81 | 2/25 | **1.7%** |
+
+it4 findings
+- Footprint agreement recovered (9.2% -> 1.7%): extent completion works at property level.
+- Matched-room IoUs unchanged, wall gate unchanged: per-room polygon shape still differs between captures.
+- Registration reports a residual rotation of 0.75 deg between the two captures' Manhattan frames. Each capture's
+  polygons are axis-aligned in its own frame, so B's walls end up rotated 0.75 deg vs A's: ~5 cm at the end of a 4 m wall.
+  The Manhattan yaw estimate (normal-histogram, concentration ~0.6) is not precise enough for a 1 cm gate.
+- Next candidates: (a) refine yaw by fitting long wall lines (target < 0.1 deg); (b) regularise polygons (remove
+  notches < 0.3 m caused by furniture/door plugs) so walls are not fragmented differently per capture.

@@ -23,17 +23,17 @@
   },
   {
    "room_a": "room3",
-   "room_b": "room1",
-   "iou": 0.0,
-   "area_a": 12.09,
-   "area_b": 12.674
-  },
-  {
-   "room_a": "room4",
    "room_b": "room2",
    "iou": 0.692,
    "area_a": 9.329,
    "area_b": 13.238
+  },
+  {
+   "room_a": "room4",
+   "room_b": "room1",
+   "iou": 0.0,
+   "area_a": 7.374,
+   "area_b": 12.674
   },
   {
    "room_a": "room5",
@@ -47,7 +47,7 @@
    "room_b": "room4",
    "iou": 0.449,
    "area_a": 5.542,
-   "area_b": 8.445
+   "area_b": 8.436
   },
   {
    "room_a": "room7",
@@ -59,9 +59,9 @@
   {
    "room_a": "room8",
    "room_b": "room4",
-   "iou": 0.185,
-   "area_a": 1.711,
-   "area_b": 8.445
+   "iou": 0.184,
+   "area_a": 1.704,
+   "area_b": 8.436
   },
   {
    "room_a": "room9",
@@ -190,7 +190,7 @@
    "note": ""
   },
   {
-   "room": "room4",
+   "room": "room3",
    "wall_len_a": 3.07,
    "wall_len_b": null,
    "diff_cm": null,
@@ -199,7 +199,7 @@
    "note": "no matching wall in B"
   },
   {
-   "room": "room4",
+   "room": "room3",
    "wall_len_a": 3.0388,
    "wall_len_b": 3.94,
    "diff_cm": 90.12,
@@ -208,7 +208,7 @@
    "note": ""
   },
   {
-   "room": "room4",
+   "room": "room3",
    "wall_len_a": 3.07,
    "wall_len_b": 3.36,
    "diff_cm": 29.0,
@@ -217,7 +217,7 @@
    "note": ""
   },
   {
-   "room": "room4",
+   "room": "room3",
    "wall_len_a": 3.0388,
    "wall_len_b": null,
    "diff_cm": null,

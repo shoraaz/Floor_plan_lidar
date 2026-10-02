@@ -364,3 +364,97 @@ def segment_structure(P: np.ndarray, cams: np.ndarray, rays: list[np.ndarray], f
         d["rooms"] = sorted({int(labels[s]) for s in sides if labels[s] > 0})
         d["center"] = g.xz(rc, cc_)
     return g, labels, closed, free, doors
+
+
+def extend_walls(wall: np.ndarray, seen: np.ndarray, res: float, min_len: float = 0.5, max_ext: float = 1.5) -> np.ndarray:
+    """ROSE2-style structure completion: extend each straight wall run (>= min_len) along its own direction
+    through UNOBSERVED cells, closing it only if it reaches another wall within max_ext. Observed free space
+    is never crossed, so a seen doorway or open area is never walled off by this step."""
+    out = wall.copy()
+    L, E = int(min_len / res), int(max_ext / res)
+    for axis in (0, 1):
+        W = wall if axis == 0 else wall.T
+        S = seen if axis == 0 else seen.T
+        O = out if axis == 0 else out.T
+        n = W.shape[1]
+        for i in range(W.shape[0]):
+            s, e = _runs(W[i])
+            for a, b in zip(s, e):
+                if b - a < L:
+                    continue
+                for direction in (1, -1):
+                    j = b if direction == 1 else a - 1
+                    path = []
+                    while 0 <= j < n and len(path) <= E:
+                        if W[i, j]:
+                            if path:
+                                O[i, path] = True
+                            break
+                        if S[i, j]:
+                            break          # observed free space: do not cross
+                        path.append(j)
+                        j += direction
+    return out
+
+
+def segment_structure_v2(P: np.ndarray, cams: np.ndarray, rays: list[np.ndarray], floor_y: float,
+                         ceiling_y: float | None, res: float = 0.025, min_room_m2: float = 1.0, min_views: int = 2,
+                         band_m: tuple[float, float] = (0.95, 1.6), min_seen_frac: float = 0.25):
+    """Structure-only segmentation with coverage-independent extent.
+
+    1. wall map (protocol-covered band) -> close doorways -> extend walls through unobserved space
+    2. rooms = connected non-wall regions NOT touching the map border (i.e. enclosed by structure);
+       extent is the enclosed region, not the observed region
+    3. an enclosed region is a room only if enough of it was actually observed (min_seen_frac)
+    4. fallback: observed free space that leaks to the border (unclosed walls) keeps the observed extent,
+       and is flagged so intervals can widen
+    """
+    top = ceiling_y if ceiling_y is not None else floor_y + 2.3
+    band = P[(P[:, 1] > floor_y + band_m[0]) & (P[:, 1] < min(top - 0.2, floor_y + band_m[1]))]
+    g = make_grid(P, res)
+    wall = accumulate(g, band) >= 4
+    wall = cv2.morphologyEx(wall.astype(np.uint8), cv2.MORPH_CLOSE, np.ones((3, 3), np.uint8)).astype(bool)
+    seen = raycast_free(g, cams, rays, floor_y, top) >= min_views
+    seen = cv2.morphologyEx(seen.astype(np.uint8), cv2.MORPH_OPEN, np.ones((3, 3), np.uint8)).astype(bool)
+    closed, doors = close_doorways(wall, res)
+    closed = extend_walls(closed, seen & ~closed, res)
+    wall_d = cv2.dilate(closed.astype(np.uint8), np.ones((3, 3), np.uint8)).astype(bool)
+    nonwall = ~wall_d
+    lab, n = ndi.label(nonwall)
+    border = np.unique(np.r_[lab[0], lab[-1], lab[:, 0], lab[:, -1]])
+    labels = np.zeros_like(lab)
+    leaked = np.zeros(lab.shape, bool)
+    cands = []
+    for i in range(1, n + 1):
+        m = lab == i
+        area = m.sum() * res * res
+        if i in border:
+            leaked |= m & seen
+            continue
+        seen_frac = (m & seen).sum() / max(m.sum(), 1)
+        if area >= min_room_m2 and seen_frac >= min_seen_frac:
+            cands.append((area, i, False))
+    # fallback for observed space that is not enclosed
+    if leaked.any():
+        lab2, n2 = ndi.label(leaked & nonwall)
+        for i in range(1, n2 + 1):
+            area = (lab2 == i).sum() * res * res
+            if area >= min_room_m2:
+                cands.append((area, -i, True))
+    j = 0
+    flags = {}
+    for area, i, is_leak in sorted(cands, key=lambda t: -t[0]):
+        j += 1
+        labels[(lab == i) if i > 0 else (lab2 == -i)] = j
+        flags[j] = {"enclosed": not is_leak, "area_m2": float(area)}
+    for d in doors:
+        r0, r1 = d["rows"]; c0, c1 = d["cols"]
+        rc, cc_ = (r0 + r1) // 2, (c0 + c1) // 2
+        off = int(0.35 / res)
+        if d["along"] == "x":
+            sides = [(min(r1 + off, labels.shape[0] - 1), cc_), (max(r0 - off, 0), cc_)]
+        else:
+            sides = [(rc, min(c1 + off, labels.shape[1] - 1)), (rc, max(c0 - off, 0))]
+        d["rooms"] = sorted({int(labels[s]) for s in sides if labels[s] > 0})
+        d["center"] = g.xz(rc, cc_)
+    return g, labels, closed, nonwall, doors, flags

@@ -66,7 +66,7 @@ def fused(capture: Path, stride: int = 6, voxel: float = 0.015):
 
 def run(capture: Path, drift_correction: bool = True) -> PropertyPlan:
     from ..geometry.planes import horizontal_planes, manhattan_yaw, rotate_y, wall_slice
-    from ..geometry.rooms import segment_structure
+    from ..geometry.rooms import segment_structure_v2
     from ..geometry.snap import snap_rooms_local
 
     P, cams, rays = fused(capture)
@@ -77,7 +77,7 @@ def run(capture: Path, drift_correction: bool = True) -> PropertyPlan:
     yaw, conc = manhattan_yaw(wall_slice(P, hp))
     P, cams = rotate_y(P, yaw), rotate_y(cams, yaw)
     rays = [rotate_y(r, yaw) for r in rays]
-    g, labels, wall, free, doors = segment_structure(P, cams, rays, hp.floor_y, hp.ceiling_y)
+    g, labels, wall, free, doors, flags = segment_structure_v2(P, cams, rays, hp.floor_y, hp.ceiling_y)
     geoms = snap_rooms_local(g, labels, P, hp.floor_y, hp.ceiling_y, wall)
 
     cal = calibration.load()["lidar"]
@@ -88,12 +88,16 @@ def run(capture: Path, drift_correction: bool = True) -> PropertyPlan:
         for i in range(n):
             p, q = rg.polygon[i], rg.polygon[(i + 1) % n]
             q_support = max(rg.wall_support[i], 0.15)
+            if not flags.get(rg.label, {}).get("enclosed", True):
+                q_support *= 0.5          # extent from observation only: widen honestly
             walls.append(Wall(p, q, Interval.from_rel(rg.wall_lengths[i], calibration.inflate(cal["wall"], q_support))))
         if rg.ceiling_height is not None:
             ceil = Interval.from_abs(rg.ceiling_height, max(0.01, 2 * (rg.ceiling_spread or 0.0)))
         else:
             ceil = None
             warnings.append(f"room{k}: ceiling not observed in capture; ceiling height not reported")
+        if not flags.get(rg.label, {}).get("enclosed", True):
+            warnings.append(f"room{k}: not enclosed by detected walls; extent from observed space only (intervals widened)")
         rooms.append(Room(room_id=f"room{k}", walls=walls, ceiling_height_m=ceil,
                           floor_area_m2=Interval.from_rel(rg.area_m2, cal["area"])))
 
