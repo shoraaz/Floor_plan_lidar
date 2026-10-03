@@ -29,6 +29,12 @@ def load_stray(p: Path, stride: int = 6):
     depth_files = sorted((p / "depth").glob("*.png"))
     conf_files = sorted((p / "confidence").glob("*.png"))
     n = min(len(odo), len(depth_files))
+    # stride is nominal for Stray's ~60 Hz logging; low-rate inputs (e.g. converted 10 Hz ARKitScenes) are
+    # rescaled so every input ends up at ~10 Hz keyframes. 60 Hz Stray data is unaffected.
+    if len(odo) > 2:
+        rate = (len(odo) - 1) / max(float(odo["timestamp"].iloc[-1] - odo["timestamp"].iloc[0]), 1e-6)
+        if rate < 30:
+            stride = max(1, int(round(stride * rate / 60)))
     frames = []
     for i in range(0, n, stride):
         row = odo.iloc[i]

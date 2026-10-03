@@ -17,3 +17,5 @@ benchmark/raw/**/*.heic
 *.log
 cache/
 benchmark/photos/**/*.jpg
+
+/own_benchmark/

@@ -210,7 +210,7 @@ def snap_rooms_local(g: Grid, labels: np.ndarray, P: np.ndarray, floor_y: float,
 
 
 def _face_near(pts: np.ndarray, axis: int, run_axis: int, run_lo: float, run_hi: float, guess: float,
-               interior_sign: int, win: float = 0.35, bin_m: float = 0.01, strong: float = 0.4):
+               interior_sign: int, win: float = 0.35, bin_m: float = 0.01, strong: float = 0.15):
     """Pick the wall face near `guess` along `axis`, using points whose run coordinate lies inside the room.
 
     Among strong histogram peaks in [guess-win, guess+win], return the one closest to the room interior
@@ -274,7 +274,13 @@ def snap_rooms_rect(g: Grid, labels: np.ndarray, P: np.ndarray, floor_y: float, 
         rect_area = max((R - L) * (T - B), 1e-6)
         fill = m.sum() * g.res ** 2 / rect_area
         if fill < min_fill and lab in fallback:
-            rooms.append(fallback[lab]); shapes[lab] = {"shape": "rectilinear", "fill": float(fill)}
+            fb = fallback[lab]
+            fb.polygon, fb.wall_support = _refine_rectilinear(fb.polygon, band)
+            n_ = len(fb.polygon)
+            fb.wall_lengths = [float(abs(fb.polygon[(t + 1) % n_][0] - fb.polygon[t][0]) +
+                                     abs(fb.polygon[(t + 1) % n_][1] - fb.polygon[t][1])) for t in range(n_)]
+            fb.area_m2 = float(_poly_area(fb.polygon))
+            rooms.append(fb); shapes[lab] = {"shape": "rectilinear", "fill": float(fill)}
             continue
         poly = [(L, B), (R, B), (R, T), (L, T)]
         lengths = [R - L, T - B, R - L, T - B]
@@ -291,3 +297,34 @@ def snap_rooms_rect(g: Grid, labels: np.ndarray, P: np.ndarray, floor_y: float, 
         rooms.append(RoomGeom(int(lab), poly, [float(x) for x in lengths], support, float(rect_area), ch, cs_))
         shapes[lab] = {"shape": "rectangle", "fill": float(fill)}
     return rooms, shapes
+
+
+def _refine_rectilinear(poly, band, min_edge: float = 0.4):
+    """Move every axis-aligned edge (>= min_edge) of a rectilinear room outline onto the room-side wall face.
+    The cell-voting outline can include a wall's thickness (cells between its two faces); laser ground truth showed
+    such edges ~20 cm outside the room-side face."""
+    from shapely.geometry import Polygon as SP, Point as SPt
+    P = [list(p) for p in poly]
+    shp = SP(poly)
+    n = len(P)
+    support = [0.0] * n
+    for i in range(n):
+        p, q = P[i], P[(i + 1) % n]
+        L = abs(q[0] - p[0]) + abs(q[1] - p[1])
+        if L < min_edge:
+            continue
+        horiz = abs(q[1] - p[1]) < abs(q[0] - p[0])
+        mx, mz = (p[0] + q[0]) / 2, (p[1] + q[1]) / 2
+        # interior side: step 5 cm along the edge normal and test containment
+        if horiz:
+            sign = +1 if shp.contains(SPt(mx, mz + 0.05)) else -1
+            face, sup = _face_near(band, 2, 0, min(p[0], q[0]), max(p[0], q[0]), p[1], sign)
+            if face is not None:
+                p[1] = q[1] = face
+        else:
+            sign = +1 if shp.contains(SPt(mx + 0.05, mz)) else -1
+            face, sup = _face_near(band, 0, 2, min(p[1], q[1]), max(p[1], q[1]), p[0], sign)
+            if face is not None:
+                p[0] = q[0] = face
+        support[i] = sup
+    return [tuple(p) for p in P], support
