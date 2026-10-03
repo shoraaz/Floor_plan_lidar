@@ -1,0 +1,96 @@
+{
+ "summary": {
+  "capture": "ark470350_b",
+  "laser_scans": [
+   "188542.ply",
+   "188545.ply"
+  ],
+  "registration": {
+   "coarse_overlap": 0.8248896598815918,
+   "coarse_rot_deg": 270,
+   "icp_fitness": 0.6510643657891422,
+   "icp_rmse_m": 0.00709219228990366,
+   "residual_rot_deg": 0.12608424860167133
+  },
+  "walls_scored": 4,
+  "walls_total": 8,
+  "median_abs_err_cm": 44.42,
+  "within_1cm": 0,
+  "within_2cm": 0,
+  "within_5cm": 0,
+  "within_1pct": 0,
+  "interval_coverage": 0.0,
+  "laser_ceiling_global_m": 2.3065
+ },
+ "walls": [
+  {
+   "room": "room2",
+   "wall": 0,
+   "ours_m": 2.6954,
+   "gt_m": null
+  },
+  {
+   "room": "room2",
+   "wall": 1,
+   "ours_m": 0.854,
+   "gt_m": null
+  },
+  {
+   "room": "room2",
+   "wall": 2,
+   "ours_m": 2.6954,
+   "gt_m": null
+  },
+  {
+   "room": "room2",
+   "wall": 3,
+   "ours_m": 0.854,
+   "gt_m": null
+  },
+  {
+   "room": "room3",
+   "wall": 0,
+   "ours_m": 1.9262,
+   "gt_m": 1.4617,
+   "err_cm": 46.45,
+   "err_pct": 31.78,
+   "covered": false
+  },
+  {
+   "room": "room3",
+   "wall": 1,
+   "ours_m": 0.4434,
+   "gt_m": 0.0194,
+   "err_cm": 42.4,
+   "err_pct": 2186.47,
+   "covered": false
+  },
+  {
+   "room": "room3",
+   "wall": 2,
+   "ours_m": 1.9262,
+   "gt_m": 1.4617,
+   "err_cm": 46.45,
+   "err_pct": 31.78,
+   "covered": false
+  },
+  {
+   "room": "room3",
+   "wall": 3,
+   "ours_m": 0.4434,
+   "gt_m": 0.0194,
+   "err_cm": 42.4,
+   "err_pct": 2186.47,
+   "covered": false
+  }
+ ],
+ "ceilings": [
+  {
+   "room": "room2",
+   "gt_m": 2.2651,
+   "ours_m": null,
+   "err_cm": null
+  }
+ ],
+ "doors": []
+}
