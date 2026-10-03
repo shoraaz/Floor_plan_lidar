@@ -9,10 +9,13 @@ import numpy as np, cv2, pandas as pd
 cap = Path(sys.argv[1]); fps = float(sys.argv[2]) if len(sys.argv) > 2 else 3.0
 clip = cap / "rgb.mp4"
 h = hashlib.sha1(f"{clip.resolve()}|{fps}|960".encode()).hexdigest()[:12]
-z = np.load(Path("cache") / f"video_{h}" / "da3_chain.npz", allow_pickle=True)
+cd = Path("cache") / f"video_{h}"
+z = np.load(cd / ("da3_chain_metric.npz" if (cd / "da3_chain_metric.npz").exists() else "da3_chain.npz"), allow_pickle=True)
 Twc, scale = list(z["Twc"]), float(z["scale"])
 v = cv2.VideoCapture(str(clip)); src_fps = v.get(cv2.CAP_PROP_FPS); n = int(v.get(cv2.CAP_PROP_FRAME_COUNT))
 step = max(1, int(round(src_fps / fps))); idx = list(range(0, n, step))[:len(Twc)]
+if (cd / "frames.json").exists():
+    import json; idx = json.loads((cd / "frames.json").read_text())[:len(Twc)]
 odo = pd.read_csv(cap / "odometry.csv", skipinitialspace=True); odo.columns = [c.strip() for c in odo.columns]
 gt = odo[["x", "y", "z"]].to_numpy()[idx]
 est = np.array([np.asarray(T, dtype=float)[:3, 3] * scale for T in Twc])

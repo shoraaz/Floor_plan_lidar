@@ -38,9 +38,6 @@ def _cache_dir(clip: Path, fps: float, width: int) -> Path:
 
 def extract_keyframes(clip: Path, out: Path, fps: float = 2.0, width: int = 960, max_frames: int = 400):
     img_dir = out / "images"
-    if img_dir.exists() and any(img_dir.iterdir()):
-        return sorted(img_dir.glob("*.jpg"))
-    img_dir.mkdir(parents=True, exist_ok=True)
     cap = cv2.VideoCapture(str(clip))
     src_fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
     n = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -48,6 +45,10 @@ def extract_keyframes(clip: Path, out: Path, fps: float = 2.0, width: int = 960,
     idx = list(range(0, n, step))
     if len(idx) > max_frames:
         idx = list(np.linspace(0, n - 1, max_frames).astype(int))
+    (out / "frames.json").write_text(json.dumps([int(i) for i in idx]))
+    if img_dir.exists() and any(img_dir.iterdir()):
+        return sorted(img_dir.glob("*.jpg"))
+    img_dir.mkdir(parents=True, exist_ok=True)
     paths = []
     for k, i in enumerate(idx):
         cap.set(cv2.CAP_PROP_POS_FRAMES, int(i))
@@ -204,16 +205,16 @@ def _load_images(paths):
 
 def da3_front(out: Path, frames: list[Path]):
     """Cached DA3 chunked poses + metric scale."""
-    cache = out / "da3_chain.npz"
+    cache = out / "da3_chain_metric.npz"
     if cache.exists():
         z = np.load(cache, allow_pickle=True)
         cast = lambda arr, dt: [None if x is None else np.asarray(x, dtype=dt) for x in arr]
         return (cast(z["Twc"], np.float64), cast(z["D"], np.float32), cast(z["K"], np.float64),
                 cast(z["C"], np.float32), float(z["scale"]), float(z["spread"]))
-    from ..geometry.da3_frontend import chunked_poses, metric_scale
+    from ..geometry.da3_frontend import chunked_poses_metric
     imgs = _load_images(frames)
-    Twc, D, K, C = chunked_poses(imgs)
-    scale, spread, _ = metric_scale(imgs, D, K)
+    Twc, D, K, C, _, spread = chunked_poses_metric(imgs)
+    scale = 1.0          # depth and poses are already metric, per chunk
     np.savez_compressed(cache, Twc=np.array(Twc, dtype=object), D=np.array(D, dtype=object),
                         K=np.array(K, dtype=object), C=np.array(C, dtype=object), scale=scale, spread=spread)
     return Twc, D, K, C, scale, spread
