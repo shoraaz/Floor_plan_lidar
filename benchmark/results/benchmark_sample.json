@@ -12,7 +12,7 @@
    "within_8pct": "ref",
    "interval_coverage": "ref",
    "ceiling_m": "not observed",
-   "seconds": 11.1
+   "seconds": 16.0
   },
   {
    "tier": "video",
@@ -25,8 +25,8 @@
    "within_3pct": 0,
    "within_8pct": 0,
    "interval_coverage": null,
-   "ceiling_m": "1.778-1.778",
-   "seconds": 277.0
+   "ceiling_m": "not observed",
+   "seconds": 39.3
   },
   {
    "tier": "photo",
@@ -39,8 +39,8 @@
    "within_3pct": 0,
    "within_8pct": 0,
    "interval_coverage": null,
-   "ceiling_m": "1.406-1.406",
-   "seconds": 166.0
+   "ceiling_m": "not observed",
+   "seconds": 63.9
   },
   {
    "tier": "lidar",
@@ -54,7 +54,7 @@
    "within_8pct": "ref",
    "interval_coverage": "ref",
    "ceiling_m": "3.030-3.079",
-   "seconds": 15.4
+   "seconds": 29.9
   },
   {
    "tier": "video",
@@ -66,9 +66,9 @@
    "median_abs_err_pct": 53.6,
    "within_3pct": 0,
    "within_8pct": 0,
-   "interval_coverage": 0.5,
+   "interval_coverage": 1.0,
    "ceiling_m": "2.422-2.453",
-   "seconds": 805.9
+   "seconds": 106.5
   },
   {
    "tier": "photo",
@@ -81,8 +81,8 @@
    "within_3pct": 0,
    "within_8pct": 0,
    "interval_coverage": 1.0,
-   "ceiling_m": "0.934-0.934",
-   "seconds": 89.1
+   "ceiling_m": "not observed",
+   "seconds": 78.0
   },
   {
    "tier": "lidar",
@@ -96,7 +96,7 @@
    "within_8pct": "ref",
    "interval_coverage": "ref",
    "ceiling_m": "not observed",
-   "seconds": 10.9
+   "seconds": 22.2
   },
   {
    "tier": "video",
@@ -108,9 +108,9 @@
    "median_abs_err_pct": 32.6,
    "within_3pct": 0,
    "within_8pct": 0,
-   "interval_coverage": 0.25,
+   "interval_coverage": 1.0,
    "ceiling_m": "2.778-2.808",
-   "seconds": 749.6
+   "seconds": 94.1
   },
   {
    "tier": "photo",
@@ -123,8 +123,8 @@
    "within_3pct": 0,
    "within_8pct": 0,
    "interval_coverage": null,
-   "ceiling_m": "1.046-1.046",
-   "seconds": 83.6
+   "ceiling_m": "not observed",
+   "seconds": 76.3
   }
  ],
  "details": {
@@ -136,8 +136,8 @@
     "ref_room": "room8",
     "iou": 0.47,
     "tier_m": 1.76,
-    "lo": 1.291,
-    "hi": 2.229,
+    "lo": 0.0,
+    "hi": 13.094,
     "lidar_m": 1.97,
     "err_pct": -10.7,
     "covered": true
@@ -147,11 +147,11 @@
     "ref_room": "room8",
     "iou": 0.47,
     "tier_m": 2.182,
-    "lo": 1.6,
-    "hi": 2.764,
+    "lo": 0.0,
+    "hi": 16.237,
     "lidar_m": 1.11,
     "err_pct": 96.6,
-    "covered": false
+    "covered": true
    }
   ],
   "photo/with_ceiling": [
@@ -160,8 +160,8 @@
     "ref_room": "room1",
     "iou": 0.61,
     "tier_m": 1.968,
-    "lo": 0.656,
-    "hi": 3.28,
+    "lo": 0.0,
+    "hi": 7.102,
     "lidar_m": 2.864,
     "err_pct": -31.3,
     "covered": true
@@ -171,8 +171,8 @@
     "ref_room": "room1",
     "iou": 0.61,
     "tier_m": 3.8,
-    "lo": 1.267,
-    "hi": 6.333,
+    "lo": 0.0,
+    "hi": 13.712,
     "lidar_m": 4.244,
     "err_pct": -10.5,
     "covered": true
@@ -184,8 +184,8 @@
     "ref_room": "room2",
     "iou": 0.52,
     "tier_m": 2.89,
-    "lo": 2.12,
-    "hi": 3.661,
+    "lo": 0.0,
+    "hi": 21.504,
     "lidar_m": 3.36,
     "err_pct": -14.0,
     "covered": true
@@ -195,33 +195,33 @@
     "ref_room": "room2",
     "iou": 0.52,
     "tier_m": 1.731,
-    "lo": 1.27,
-    "hi": 2.193,
+    "lo": 0.0,
+    "hi": 12.881,
     "lidar_m": 2.84,
     "err_pct": -39.0,
-    "covered": false
+    "covered": true
    },
    {
     "room": "room5",
     "ref_room": "room6",
     "iou": 0.41,
     "tier_m": 2.107,
-    "lo": 1.545,
-    "hi": 2.669,
+    "lo": 0.0,
+    "hi": 15.677,
     "lidar_m": 3.82,
     "err_pct": -44.8,
-    "covered": false
+    "covered": true
    },
    {
     "room": "room5",
     "ref_room": "room6",
     "iou": 0.41,
     "tier_m": 0.87,
-    "lo": 0.638,
-    "hi": 1.102,
+    "lo": 0.0,
+    "hi": 6.473,
     "lidar_m": 1.18,
     "err_pct": -26.3,
-    "covered": false
+    "covered": true
    }
   ],
   "photo/floor_only": []

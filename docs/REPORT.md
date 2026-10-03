@@ -40,8 +40,8 @@ Design choices that matter at the defense:
 | Tier | Input | Front end | Runs on | Sample-data result (vs LiDAR) |
 |---|---|---|---|---|
 | LiDAR | Stray Scanner export | ARKit poses + LiDAR depth (conf = 2) | iPhone 12 Pro or newer (Pro) | reference; repeatability in sec. 5 |
-| Video | any clip | DA3-LARGE-1.1 chunks (24 frames, 8 shared), per-chunk metric scale | any iPhone 15+ clip; CUDA GPU for processing | TBD |
-| Photo | per-room folders | joint DA3 pass over all photos, metric scale | any iPhone 15+; CUDA GPU | TBD |
+| Video | any clip | DA3-LARGE-1.1 chunks (24 frames, 8 shared), per-chunk metric scale | any iPhone 15+ clip; CUDA GPU for processing | footprint -55% to -90%; matched dims 33-54% median error; **fails +/-3% gate** |
+| Photo | per-room folders | joint DA3 pass over all photos, metric scale | any iPhone 15+; CUDA GPU | collapses to 1 room; 3/3 flagged UNRELIABLE by the plausibility gate; **fails stitch and +/-8% gates** |
 
 Conventions verified on data, not assumed: Stray Scanner poses are camera-to-world in an OpenCV camera frame
 inside an ARKit y-up world (`scripts/test_convention.py`: floor peak 1.4 m below camera only under this
@@ -56,7 +56,10 @@ LiDAR: ARKit visual-inertial odometry poses are used; drift is measured, not yet
 planned but not shipped; the PDF's drift row is therefore failed and stated as such.
 Video: v1 chained chunk scale relative to the previous chunk, which compounded per-chunk scale error (scale off
 by 86% after 54 m, `traj_floor_only.txt`). v2 anchors every chunk to metres independently and chains only
-rotation and translation. TBD numbers.
+rotation and translation. That fixed the scale blow-up mechanism but not the shape: chunk joins still jump
+1.5-4.5 m (chain_steps_with_ceiling_v2.txt), the path is 35% too long, and after a similarity fit the trajectory
+error is 2.9-3.2 m (5% of path). Within one 24-frame chunk DA3 is good to 5-17 cm over 3 m; the chaining, not the
+model, is the weak link. A global pose graph over chunk overlaps with loop closure is the next step (not shipped).
 
 ## 4. Error budget (LiDAR tier, from sample data)
 
@@ -82,7 +85,13 @@ wrongly excluded and orientation error (0.75 deg) was missed. Full story: `fixlo
 
 Intervals are relative half-widths per tier and measurement kind (`calibration.py`), inflated by evidence
 quality: wall-face support along each side, enclosure, and for video/photo the disagreement of metric-scale
-votes. TBD: coverage of video/photo intervals against LiDAR values.
+votes. Half-widths are fitted from measured errors (scripts/fit_calibration.py, enchmark/results/calibration_fit.json):
+LiDAR 1.2% (4 cross-capture residuals on identically partitioned rooms, halved), photo 39% (2 residuals, so
+max(default, 1.25 x worst)), video 97% (conformal q90 of 6). With these, video/photo intervals contain the LiDAR
+value for 100% of matched dimensions; **this is in-sample (fitted and scored on the same captures) and optimistic.**
+Before fitting, coverage was 25-50%: the defaults were confident garbage.
+A plausibility gate marks a non-LiDAR plan UNRELIABLE when floor-to-ceiling is outside 2.1-4.2 m (wrong metric
+scale): ceilings withheld, intervals at the tier maximum. It fires on 4/6 video/photo runs of the sample data.
 
 ## 7. Known failure modes
 
