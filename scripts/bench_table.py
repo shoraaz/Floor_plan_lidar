@@ -11,7 +11,10 @@ caps = ["single_room", "with_ceiling", "floor_only"]
 timing = {}
 if (B / "timing.csv").exists():
     for t, k, s in csv.reader(open(B / "timing.csv")):
-        timing[(t, k)] = float(s)
+        try:
+            timing[(t, k)] = float(s)
+        except ValueError:
+            pass
 rows, details = [], {}
 for k in caps:
     ref = B / "lidar" / k / "plan.json"

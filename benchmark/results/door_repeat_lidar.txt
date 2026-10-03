@@ -1,0 +1,8 @@
+room3   A=0.765  B=-  diff=-
+room4   A=1.275  B=-  diff=-
+room5   A=0.680  B=-  diff=-
+room5   A=0.685  B=-  diff=-
+room6   A=1.275  B=-  diff=-
+room8   A=0.765  B=-  diff=-
+room9   A=1.300  B=-  diff=-
+matched 0/7 doors; within 2 cm: 0/0

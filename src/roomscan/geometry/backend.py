@@ -49,6 +49,9 @@ def plan_from_cloud(P: np.ndarray, cams: np.ndarray, rays: list[np.ndarray], cap
                           floor_area_m2=Interval.from_rel(rg.area_m2, calibration.inflate(cal["area"], quality_scale))))
 
     lab_to_id = {rg.label: f"room{k}" for k, rg in enumerate(geoms, 1)}
+    from .openings import attach_openings
+    band = P[(P[:, 1] > hp.floor_y + 0.95) & (P[:, 1] < hp.floor_y + 1.6)]
+    n_open = attach_openings(rooms, geoms, doors, lab_to_id, band)
     adj = set()
     for d in doors:
         ids = [lab_to_id[l] for l in d.get("rooms", []) if l in lab_to_id]
@@ -59,6 +62,7 @@ def plan_from_cloud(P: np.ndarray, cams: np.ndarray, rays: list[np.ndarray], cap
                "floor_spread_m": round(hp.floor_spread_m, 4),
                "loop_gap_m": round(float(np.linalg.norm(cams[-1] - cams[0])), 3),
                "yaw_deg": round(float(np.degrees(yaw)), 3), "yaw_refine_delta_deg": round(yinfo["delta_deg"], 3)}
+    quality["doors_emitted"] = int(n_open)
     quality.update(extra_quality or {})
     return PropertyPlan(capture_id=capture_id, tier=tier, rooms=rooms, adjacency=sorted(adj), warnings=warnings,
                         input_quality=quality)
