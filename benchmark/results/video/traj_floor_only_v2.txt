@@ -1,0 +1,3 @@
+frames 350  path 53.73 m
+metric scale correction needed: 0.1245  (1.0 = video scale already metric; error 87.5%)
+ATE after sim3: rmse 287.4 cm, max 501.8 cm (5.35% of path)

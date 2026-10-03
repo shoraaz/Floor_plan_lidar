@@ -1,0 +1,229 @@
+{
+ "rows": [
+  {
+   "tier": "lidar",
+   "capture": "single_room",
+   "rooms": 4,
+   "footprint_m2": 20.61,
+   "footprint_err_pct": 0.0,
+   "matched_dims": "ref",
+   "median_abs_err_pct": "ref",
+   "within_3pct": "ref",
+   "within_8pct": "ref",
+   "interval_coverage": "ref",
+   "ceiling_m": "not observed",
+   "seconds": 11.1
+  },
+  {
+   "tier": "video",
+   "capture": "single_room",
+   "rooms": 1,
+   "footprint_m2": 2.12,
+   "footprint_err_pct": -89.7,
+   "matched_dims": 0,
+   "median_abs_err_pct": NaN,
+   "within_3pct": 0,
+   "within_8pct": 0,
+   "interval_coverage": null,
+   "ceiling_m": "1.778-1.778",
+   "seconds": 277.0
+  },
+  {
+   "tier": "photo",
+   "capture": "single_room",
+   "rooms": 1,
+   "footprint_m2": 1.44,
+   "footprint_err_pct": -93.0,
+   "matched_dims": 0,
+   "median_abs_err_pct": NaN,
+   "within_3pct": 0,
+   "within_8pct": 0,
+   "interval_coverage": null,
+   "ceiling_m": "1.406-1.406",
+   "seconds": 166.0
+  },
+  {
+   "tier": "lidar",
+   "capture": "with_ceiling",
+   "rooms": 10,
+   "footprint_m2": 54.51,
+   "footprint_err_pct": 0.0,
+   "matched_dims": "ref",
+   "median_abs_err_pct": "ref",
+   "within_3pct": "ref",
+   "within_8pct": "ref",
+   "interval_coverage": "ref",
+   "ceiling_m": "3.030-3.079",
+   "seconds": 15.4
+  },
+  {
+   "tier": "video",
+   "capture": "with_ceiling",
+   "rooms": 7,
+   "footprint_m2": 24.73,
+   "footprint_err_pct": -54.6,
+   "matched_dims": 2,
+   "median_abs_err_pct": 53.6,
+   "within_3pct": 0,
+   "within_8pct": 0,
+   "interval_coverage": 0.5,
+   "ceiling_m": "2.422-2.453",
+   "seconds": 805.9
+  },
+  {
+   "tier": "photo",
+   "capture": "with_ceiling",
+   "rooms": 1,
+   "footprint_m2": 7.48,
+   "footprint_err_pct": -86.3,
+   "matched_dims": 2,
+   "median_abs_err_pct": 20.9,
+   "within_3pct": 0,
+   "within_8pct": 0,
+   "interval_coverage": 1.0,
+   "ceiling_m": "0.934-0.934",
+   "seconds": 89.1
+  },
+  {
+   "tier": "lidar",
+   "capture": "floor_only",
+   "rooms": 8,
+   "footprint_m2": 51.01,
+   "footprint_err_pct": 0.0,
+   "matched_dims": "ref",
+   "median_abs_err_pct": "ref",
+   "within_3pct": "ref",
+   "within_8pct": "ref",
+   "interval_coverage": "ref",
+   "ceiling_m": "not observed",
+   "seconds": 10.9
+  },
+  {
+   "tier": "video",
+   "capture": "floor_only",
+   "rooms": 5,
+   "footprint_m2": 14.11,
+   "footprint_err_pct": -72.3,
+   "matched_dims": 4,
+   "median_abs_err_pct": 32.6,
+   "within_3pct": 0,
+   "within_8pct": 0,
+   "interval_coverage": 0.25,
+   "ceiling_m": "2.778-2.808",
+   "seconds": 749.6
+  },
+  {
+   "tier": "photo",
+   "capture": "floor_only",
+   "rooms": 1,
+   "footprint_m2": 9.01,
+   "footprint_err_pct": -82.3,
+   "matched_dims": 0,
+   "median_abs_err_pct": NaN,
+   "within_3pct": 0,
+   "within_8pct": 0,
+   "interval_coverage": null,
+   "ceiling_m": "1.046-1.046",
+   "seconds": 83.6
+  }
+ ],
+ "details": {
+  "video/single_room": [],
+  "photo/single_room": [],
+  "video/with_ceiling": [
+   {
+    "room": "room4",
+    "ref_room": "room8",
+    "iou": 0.47,
+    "tier_m": 1.76,
+    "lo": 1.291,
+    "hi": 2.229,
+    "lidar_m": 1.97,
+    "err_pct": -10.7,
+    "covered": true
+   },
+   {
+    "room": "room4",
+    "ref_room": "room8",
+    "iou": 0.47,
+    "tier_m": 2.182,
+    "lo": 1.6,
+    "hi": 2.764,
+    "lidar_m": 1.11,
+    "err_pct": 96.6,
+    "covered": false
+   }
+  ],
+  "photo/with_ceiling": [
+   {
+    "room": "room1",
+    "ref_room": "room1",
+    "iou": 0.61,
+    "tier_m": 1.968,
+    "lo": 0.656,
+    "hi": 3.28,
+    "lidar_m": 2.864,
+    "err_pct": -31.3,
+    "covered": true
+   },
+   {
+    "room": "room1",
+    "ref_room": "room1",
+    "iou": 0.61,
+    "tier_m": 3.8,
+    "lo": 1.267,
+    "hi": 6.333,
+    "lidar_m": 4.244,
+    "err_pct": -10.5,
+    "covered": true
+   }
+  ],
+  "video/floor_only": [
+   {
+    "room": "room2",
+    "ref_room": "room2",
+    "iou": 0.52,
+    "tier_m": 2.89,
+    "lo": 2.12,
+    "hi": 3.661,
+    "lidar_m": 3.36,
+    "err_pct": -14.0,
+    "covered": true
+   },
+   {
+    "room": "room2",
+    "ref_room": "room2",
+    "iou": 0.52,
+    "tier_m": 1.731,
+    "lo": 1.27,
+    "hi": 2.193,
+    "lidar_m": 2.84,
+    "err_pct": -39.0,
+    "covered": false
+   },
+   {
+    "room": "room5",
+    "ref_room": "room6",
+    "iou": 0.41,
+    "tier_m": 2.107,
+    "lo": 1.545,
+    "hi": 2.669,
+    "lidar_m": 3.82,
+    "err_pct": -44.8,
+    "covered": false
+   },
+   {
+    "room": "room5",
+    "ref_room": "room6",
+    "iou": 0.41,
+    "tier_m": 0.87,
+    "lo": 0.638,
+    "hi": 1.102,
+    "lidar_m": 1.18,
+    "err_pct": -26.3,
+    "covered": false
+   }
+  ],
+  "photo/floor_only": []
+ }
+}

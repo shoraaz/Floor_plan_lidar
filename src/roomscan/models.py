@@ -15,7 +15,7 @@ class Interval:
     @staticmethod
     def from_rel(value: float, rel_halfwidth: float, unit: str = "m", level: float = 0.90) -> "Interval":
         h = abs(value) * rel_halfwidth
-        return Interval(value, value - h, value + h, unit, level)
+        return Interval(value, max(value - h, 0.0) if value >= 0 else value - h, value + h, unit, level)
 
     @staticmethod
     def from_abs(value: float, halfwidth: float, unit: str = "m", level: float = 0.90) -> "Interval":

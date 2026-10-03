@@ -1,0 +1,32 @@
+{
+ "video": {
+  "wall_rel_halfwidth": 0.966,
+  "method": "conformal q90 of 6 residuals",
+  "residuals": [
+   0.107,
+   0.966,
+   0.14,
+   0.39,
+   0.448,
+   0.263
+  ]
+ },
+ "photo": {
+  "wall_rel_halfwidth": 0.3912,
+  "method": "2 residuals (<5): max(default, 1.25 x worst)",
+  "residuals": [
+   0.313,
+   0.105
+  ]
+ },
+ "lidar": {
+  "wall_rel_halfwidth": 0.0122,
+  "method": "4 residuals (<5): max(default, 1.25 x worst)",
+  "residuals": [
+   0.004,
+   0.0031,
+   0.0059,
+   0.0098
+  ]
+ }
+}
