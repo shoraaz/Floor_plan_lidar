@@ -51,9 +51,27 @@ convention). DA3 extrinsics are world-to-camera (`benchmark/results/video/da3_co
 
 ## 3. Drift
 
-LiDAR: ARKit visual-inertial odometry poses are used; drift is measured, not yet corrected. On the 99 m
-`with_ceiling` walk the loop gap is 0.39 m and the floor slab spreads 1.8 cm. A plane-anchored pose graph was
-planned but not shipped; the PDF's drift row is therefore failed and stated as such.
+LiDAR (`geometry/drift.py`, ON by default, `--no-drift-correction` for the ablation): a pose graph with ARKit
+frame-to-frame odometry edges plus loop edges at revisits (frames >= 100 keyframes apart, < 0.6 m and < 25 deg
+viewing difference), each verified by coarse-to-fine point-to-plane ICP of local submaps and accepted only if
+fitness > 0.5, RMSE < 1.5 cm, correction < 0.3 m and < 3 deg; Open3D global optimisation with line-process pruning.
+A first version (start-end loop only) was rejected by its own checks on every sample: the walk starts and ends
+looking in different directions, so the two submaps barely overlap.
+
+Ablation (`scripts/drift_ablation.py`, `benchmark/results/drift_ablation_*.log`):
+
+| setting | loops used (with_ceiling) | max pose shift | floor spread | footprint with_ceiling | footprint diff vs floor_only |
+|---|---|---|---|---|---|
+| OFF (ARKit poses) | - | - | 1.40 cm | 54.51 m2 | 6.4% |
+| ON, strict (shipped) | 1/5 | 16.6 cm | 1.49 cm | 57.98 m2 | 12.0% |
+| ON, loose (fitness > 0.35) | 5/5 | 19.4 cm | 1.80 cm | 60.85 m2 | 16.2% |
+
+**The correction does not improve these captures; more loops make the drift indicators worse.** Most likely
+ARKit's VIO already relocalises on revisits, so its poses are globally consistent at this scale, and our loop
+edges (partial-overlap submaps) inject more error than they remove. Shipped strict so that a capture with real
+uncorrected drift gets corrected, while these captures change little; `floor_only` and `single_room` have no
+verified revisit and run uncorrected (stated in their warnings). Honest status of the row: correction implemented
+and ablated; benefit not demonstrated on the sample data.
 Video: v1 chained chunk scale relative to the previous chunk, which compounded per-chunk scale error (scale off
 by 86% after 54 m, `traj_floor_only.txt`). v2 anchors every chunk to metres independently and chains only
 rotation and translation. That fixed the scale blow-up mechanism but not the shape: chunk joins still jump

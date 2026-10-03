@@ -46,3 +46,31 @@ def fuse(capture: Path, stride: int = 6, max_frames: int | None = None, ray_samp
         cams.append(T[:3, 3])
         rays.append(w[rng.choice(len(w), min(ray_samples, len(w)), replace=False)] if len(w) else w)
     return np.concatenate(pts), np.array(cams), rays
+
+
+def fuse_frames_list(frames, ray_samples: int = 400, **kw):
+    """Fuse an explicit list of (T, K, depth_path, conf_path) frames (e.g. drift-corrected)."""
+    rng = np.random.default_rng(0)
+    pts, cams, rays = [], [], []
+    for T, (fx, fy, cx, cy), dpath, cpath in frames:
+        depth = cv2.imread(str(dpath), cv2.IMREAD_UNCHANGED)
+        conf = cv2.imread(str(cpath), cv2.IMREAD_UNCHANGED) if cpath else None
+        Kd = scale_intrinsics(fx, fy, cx, cy, depth.shape[1], depth.shape[0])
+        w = backproject(depth, conf, Kd, T, **kw)
+        pts.append(w); cams.append(T[:3, 3])
+        rays.append(w[rng.choice(len(w), min(ray_samples, len(w)), replace=False)] if len(w) else w)
+    return np.concatenate(pts), np.array(cams), rays
+
+
+def fuse_with_drift(capture: Path, stride: int = 6, drift: bool = True, **kw):
+    """Returns (points, cams, rays, drift_info). drift=False is the ablation baseline (raw ARKit poses)."""
+    from .drift import pose_graph_correct
+    frames = load_stray(capture, stride=stride)
+    info = {"enabled": drift, "method": "pose graph: ARKit odometry edges + ICP-verified revisit loops"}
+    if drift:
+        new, li = pose_graph_correct(frames)
+        info.update(li)
+        if new is not None:
+            frames = new
+    P, C, Rr = fuse_frames_list(frames, **kw)
+    return P, C, Rr, info

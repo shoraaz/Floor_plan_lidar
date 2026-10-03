@@ -22,8 +22,8 @@ from ..geometry.planes import horizontal_planes, estimate_yaw, rotate_y
 RES = 0.05
 
 
-def aligned_band(capture: Path) -> np.ndarray:
-    P, cams, _ = fused(capture)
+def aligned_band(capture: Path, drift: bool = False) -> np.ndarray:
+    P, cams, _ = fused(capture, drift=drift)
     hp = horizontal_planes(P, cam_y=float(np.median(cams[:, 1])))
     yaw, _ = estimate_yaw(P, hp)
     P = rotate_y(P, yaw)

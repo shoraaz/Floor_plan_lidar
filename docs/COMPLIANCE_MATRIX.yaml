@@ -32,8 +32,8 @@ requirements:
   - id: R-OUT-OPENINGS
     text: Openings (doors/windows) with widths
     path: src/roomscan/geometry/rooms.py (doorway gaps detected for segmentation only)
-    artifact: plan.json rooms[].openings
-    status: not_done  # doorways are detected and used for adjacency, not yet emitted as openings
+    artifact: plan.json rooms[].openings, benchmark/results/door_repeat_lidar.txt
+    status: partial   # doors between two rooms emitted (frame-face widths); not repeatable across captures; no windows
   - id: R-OUT-STITCH
     text: Stitched multi-room plan, adjacency, no overlaps
     path: src/roomscan/geometry/stitch.py
@@ -82,8 +82,8 @@ requirements:
   - id: R-GATE-DRIFT
     text: Drift handling + on/off ablation
     path: src/roomscan/geometry/drift.py
-    artifact: none
-    status: not_done  # ARKit VIO poses used; loop gap measured (input_quality.loop_gap_m) but not corrected
+    artifact: benchmark/results/drift_ablation_*.log, docs/REPORT.md sec. 3
+    status: partial   # pose graph + verified revisit loops, ON by default, ablated; no measured benefit on sample data
   - id: R-GATE-ACCURACY
     text: Opening/ceiling/wall accuracy vs ground truth
     path: n/a

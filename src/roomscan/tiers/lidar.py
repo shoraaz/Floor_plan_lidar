@@ -44,30 +44,49 @@ def scale_intrinsics(fx, fy, cx, cy, depth_w: int, depth_h: int):
     return fx * sx, fy * sy, cx * sx, cy * sy
 
 
-def _cache_path(capture: Path, stride: int) -> Path:
-    h = hashlib.sha1(f"{capture.resolve()}|{stride}".encode()).hexdigest()[:12]
+def _cache_path(capture: Path, stride: int, drift: bool = False) -> Path:
+    tag = f"{capture.resolve()}|{stride}" + ("|drift2" if drift else "")
+    h = hashlib.sha1(tag.encode()).hexdigest()[:12]
     d = Path("cache"); d.mkdir(exist_ok=True)
     return d / f"lidar_{h}.npz"
 
 
-def fused(capture: Path, stride: int = 6, voxel: float = 0.015):
-    """Fuse depth into a voxelised cloud + camera path + ray endpoints, cached deterministically on disk."""
+def fused(capture: Path, stride: int = 6, voxel: float = 0.015, drift: bool = False):
+    """Fuse depth into a voxelised cloud + camera path + ray endpoints, cached deterministically on disk.
+    drift=True applies start-end loop closure (geometry/drift.py); drift=False = raw ARKit poses (ablation)."""
+    import json
     import open3d as o3d
-    from ..geometry.pointcloud import fuse
-    cp = _cache_path(capture, stride)
+    from ..geometry.pointcloud import fuse, fuse_with_drift
+    cp = _cache_path(capture, stride, drift)
     if cp.exists():
         z = np.load(cp)
         return z["P"], z["cams"], np.split(z["R"], z["off"])
-    pts, cams, rays = fuse(capture, stride=stride)
+    if drift:
+        pts, cams, rays, info = fuse_with_drift(capture, stride=stride, drift=True)
+        cp.with_suffix(".drift.json").write_text(json.dumps(info, indent=1))
+    else:
+        pts, cams, rays = fuse(capture, stride=stride)
     P = np.asarray(o3d.geometry.PointCloud(o3d.utility.Vector3dVector(pts)).voxel_down_sample(voxel).points)
     np.savez_compressed(cp, P=P, cams=cams, R=np.concatenate(rays), off=np.cumsum([len(r) for r in rays])[:-1])
     return P, cams, rays
 
 
+def drift_info(capture: Path, stride: int = 6) -> dict:
+    import json
+    p = _cache_path(capture, stride, True).with_suffix(".drift.json")
+    return json.loads(p.read_text()) if p.exists() else {}
+
+
 def run(capture: Path, drift_correction: bool = True) -> PropertyPlan:
     from ..geometry.backend import plan_from_cloud
-    P, cams, rays = fused(capture)
+    P, cams, rays = fused(capture, drift=drift_correction)
     warnings: list[str] = []
+    extra = {"drift_correction": drift_correction}
     if drift_correction:
-        warnings.append("drift correction not implemented yet: poses used as reported by ARKit")
-    return plan_from_cloud(P, cams, rays, capture.name, "lidar", warnings)
+        info = drift_info(capture)
+        extra.update({f"drift_{k}": (round(v, 4) if isinstance(v, float) else v) for k, v in info.items()})
+        if info.get("loop") != "accepted":
+            warnings.append(f"drift: no loop closure applied ({info.get('loop', 'unknown')}); ARKit poses used")
+    else:
+        warnings.append("drift correction disabled (ablation): raw ARKit poses")
+    return plan_from_cloud(P, cams, rays, capture.name, "lidar", warnings, extra)
