@@ -1,5 +1,5 @@
 """Video-tier trajectory check against the LiDAR (ARKit) odometry of the same clip.
-uv run python scripts/video_traj_check.py <stray_capture_dir> [fps]
+uv run python scripts/diagnostics/video_traj_check.py <stray_capture_dir> [fps]
 Reports: metric scale error of the video front end, and absolute trajectory error after a similarity alignment.
 """
 import sys, hashlib

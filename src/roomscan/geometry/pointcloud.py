@@ -10,7 +10,7 @@ from ..tiers.lidar import load_stray, scale_intrinsics
 def backproject(depth_mm: np.ndarray, conf: np.ndarray | None, K_depth, T_world_cam: np.ndarray,
                 min_conf: int = 2, max_range_m: float = 6.0, pixel_stride: int = 2) -> np.ndarray:
     """Stray Scanner poses are camera->world with an OpenCV camera frame (x right, y down, z forward).
-    World frame is ARKit: y up (gravity-aligned). Verified empirically: scripts/test_convention.py
+    World frame is ARKit: y up (gravity-aligned). Verified empirically: scripts/diagnostics/test_convention.py
     puts a sharp floor peak ~1.4 m below the camera with this convention and none with the ARKit one."""
     fx, fy, cx, cy = K_depth
     h, w = depth_mm.shape

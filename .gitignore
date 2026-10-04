@@ -16,6 +16,8 @@ benchmark/raw/**/*.heic
 
 *.log
 cache/
-benchmark/photos/**/*.jpg
+benchmark/photos*/
 
 /own_benchmark/
+# result logs are evidence cited in the report
+!benchmark/results/**/*.log

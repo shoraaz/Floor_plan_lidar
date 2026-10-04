@@ -1,5 +1,5 @@
 """Overlay registered room polygons of two captures (A solid, B dashed) for repeatability diagnosis.
-uv run python scripts/repeat_overlay.py <capA> <capB> <planA> <planB> <out.png>
+uv run python scripts/diagnostics/repeat_overlay.py <capA> <capB> <planA> <planB> <out.png>
 """
 import sys, json
 from pathlib import Path

@@ -1,12 +1,11 @@
-"""Room segmentation + rectilinear room polygons from an aligned (Manhattan) point cloud.
+"""Room segmentation from wall structure (Manhattan-aligned frame: x/z horizontal, y up).
 
-Pipeline (all in the Manhattan-aligned frame, x/z horizontal, y up):
-  1. 2D grids: wall occupancy (points in a band above furniture), floor observations, camera path
-  2. interior = filled union; free = interior minus dilated walls
-  3. room cores = free cells farther than `core_m` from any wall (doorways pinch off), connected components
-  4. watershed cores back into all free space -> one label per room
-  5. per room: rectilinear polygon, edges snapped to the nearest wall-face peak in the raw points
-  6. doors = boundaries between adjacent room labels; ceiling height per room from ceiling points over it
+segment_structure_v2:
+  1. wall map from a 0.95-1.6 m band (above furniture, covered by any protocol walk)
+  2. doorways = 0.6-1.3 m gaps between collinear wall runs -> closed (also recorded as doors)
+  3. walls extended through UNOBSERVED space (ray-cast free space never crossed), ROSE2-style
+  4. rooms = non-wall regions enclosed by structure, kept only if enough of them was observed;
+     observed space leaking to the border keeps its observed extent and is flagged
 """
 from __future__ import annotations
 from dataclasses import dataclass, field
@@ -56,166 +55,9 @@ def accumulate(g: Grid, pts: np.ndarray) -> np.ndarray:
     return img
 
 
-def segment(P: np.ndarray, cams: np.ndarray | None, floor_y: float, ceiling_y: float | None,
-            res: float = 0.025, core_m: float = 0.5, min_room_m2: float = 1.0):
-    top = ceiling_y if ceiling_y is not None else floor_y + 2.3
-    band = P[(P[:, 1] > floor_y + 1.1) & (P[:, 1] < min(top - 0.2, floor_y + 2.0))]   # above most furniture
-    floor_pts = P[np.abs(P[:, 1] - floor_y) < 0.04]
-    g = make_grid(P, res)
-
-    wall = accumulate(g, band) >= 4
-    wall = cv2.morphologyEx(wall.astype(np.uint8), cv2.MORPH_OPEN, np.ones((2, 2), np.uint8)).astype(bool)
-    seen = accumulate(g, floor_pts) > 0
-    if cams is not None and len(cams):
-        cr, cc = g.idx(cams[:, 0], cams[:, 2])
-        seen[np.clip(cr, 0, g.shape[0] - 1), np.clip(cc, 0, g.shape[1] - 1)] = True
-    k = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9))
-    interior = cv2.morphologyEx((seen | wall).astype(np.uint8), cv2.MORPH_CLOSE, k).astype(bool)
-    interior = ndi.binary_fill_holes(interior)
-    wall_d = cv2.dilate(wall.astype(np.uint8), np.ones((3, 3), np.uint8)).astype(bool)
-    free = interior & ~wall_d
-    free = cv2.morphologyEx(free.astype(np.uint8), cv2.MORPH_OPEN, np.ones((3, 3), np.uint8)).astype(bool)
-
-    dist = ndi.distance_transform_edt(free) * res
-    cores, n = ndi.label(dist > core_m)
-    sizes = ndi.sum(np.ones_like(cores), cores, index=np.arange(1, n + 1)) * res * res
-    keep = np.zeros(n + 1, int)
-    j = 0
-    for i, s in enumerate(sizes, 1):
-        if s >= 0.15:
-            j += 1; keep[i] = j
-    cores = keep[cores]
-
-    # watershed: grow cores through free space only
-    markers = cores.astype(np.int32).copy()
-    markers[~free] = j + 1
-    img = cv2.cvtColor(np.clip(255 - dist / max(dist.max(), 1e-6) * 255, 0, 255).astype(np.uint8), cv2.COLOR_GRAY2BGR)
-    cv2.watershed(img, markers)
-    labels = np.where((markers > 0) & (markers <= j) & free, markers, 0)
-
-    # drop tiny rooms (merge into nothing; they become unlabelled)
-    for lab in range(1, j + 1):
-        if (labels == lab).sum() * res * res < min_room_m2:
-            labels[labels == lab] = 0
-    return g, labels, wall, free
-
-
-def _rectilinear(mask: np.ndarray, g: Grid, eps_m: float = 0.12) -> list[tuple[float, float]]:
-    cs, _ = cv2.findContours(mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-    c = max(cs, key=cv2.contourArea)
-    a = cv2.approxPolyDP(c, eps_m / g.res, True)[:, 0, :].astype(float)   # (col,row)
-    # classify edges as horizontal/vertical, merge runs, rebuild vertices as axis-line intersections
-    lines = []
-    for i in range(len(a)):
-        p, q = a[i], a[(i + 1) % len(a)]
-        horiz = abs(q[0] - p[0]) >= abs(q[1] - p[1])
-        val = (p[1] + q[1]) / 2 if horiz else (p[0] + q[0]) / 2
-        L = abs(q[0] - p[0]) + abs(q[1] - p[1])
-        if lines and lines[-1][0] == horiz:
-            h, v, l0 = lines[-1]
-            lines[-1] = (h, (v * l0 + val * L) / (l0 + L), l0 + L)
-        else:
-            lines.append((horiz, val, L))
-    if len(lines) > 1 and lines[0][0] == lines[-1][0]:
-        h, v, L = lines.pop()
-        h0, v0, L0 = lines[0]
-        lines[0] = (h0, (v0 * L0 + v * L) / (L0 + L), L0 + L)
-    verts = []
-    for i in range(len(lines)):
-        a1, b1 = lines[i - 1], lines[i]
-        if a1[0] == b1[0]:
-            continue
-        col = b1[1] if not b1[0] else a1[1]
-        row = b1[1] if b1[0] else a1[1]
-        verts.append(g.xz(row, col))
-    return verts
-
-
-def _snap_edges(poly, P_band: np.ndarray, search: float = 0.15, bin_m: float = 0.005):
-    """Move each axis-aligned edge to the wall-face peak nearest the room side. Returns new poly + support."""
-    n = len(poly)
-    poly = [list(p) for p in poly]
-    support = []
-    cx = np.mean([p[0] for p in poly]); cz = np.mean([p[1] for p in poly])
-    for i in range(n):
-        p, q = poly[i], poly[(i + 1) % n]
-        horiz = abs(q[0] - p[0]) > abs(q[1] - p[1])            # edge runs along x -> wall at fixed z
-        ax_fixed, ax_run = (2, 0) if horiz else (0, 2)
-        fixed = p[1] if horiz else p[0]
-        lo, hi = sorted([p[0], q[0]] if horiz else [p[1], q[1]])
-        shrink = 0.1 * (hi - lo)
-        sel = P_band[(P_band[:, ax_run] > lo + shrink) & (P_band[:, ax_run] < hi - shrink) &
-                     (np.abs(P_band[:, ax_fixed] - fixed) < search)]
-        if len(sel) < 30:
-            support.append(0.0); continue
-        h, e = np.histogram(sel[:, ax_fixed], bins=np.arange(fixed - search, fixed + search + bin_m, bin_m))
-        h = ndi.uniform_filter1d(h.astype(float), 3)
-        centres = (e[:-1] + e[1:]) / 2
-        strong = h >= 0.5 * h.max()
-        # room side: the face whose normal points toward the room centre -> peak closest to centre
-        centre_coord = cz if horiz else cx
-        cand = centres[strong]
-        new = float(cand[np.argmin(np.abs(cand - centre_coord))])
-        # coverage: fraction of edge run backed by wall points near the face
-        on = sel[np.abs(sel[:, ax_fixed] - new) < 0.03][:, ax_run]
-        bins = np.arange(lo, hi + 0.05, 0.05)
-        cov = (np.histogram(on, bins=bins)[0] > 0).mean() if len(bins) > 1 else 0
-        support.append(float(cov))
-        if horiz:
-            p[1] = q[1] = new
-        else:
-            p[0] = q[0] = new
-    return [tuple(p) for p in poly], support
-
-
 def _poly_area(poly):
     x = np.array([p[0] for p in poly]); z = np.array([p[1] for p in poly])
     return 0.5 * abs(np.dot(x, np.roll(z, 1)) - np.dot(z, np.roll(x, 1)))
-
-
-def rooms_from_labels(g: Grid, labels: np.ndarray, P: np.ndarray, floor_y: float, ceiling_y: float | None):
-    top = ceiling_y if ceiling_y is not None else floor_y + 2.3
-    band = P[(P[:, 1] > floor_y + 0.9) & (P[:, 1] < min(top - 0.15, floor_y + 2.1))]
-    ceil_pts = P[np.abs(P[:, 1] - ceiling_y) < 0.08] if ceiling_y is not None else None
-    rooms = []
-    for lab in np.unique(labels):
-        if lab == 0:
-            continue
-        mask = labels == lab
-        mask_d = cv2.dilate(mask.astype(np.uint8), np.ones((5, 5), np.uint8))   # reach the wall face
-        poly = _rectilinear(mask_d, g)
-        if len(poly) < 4:
-            continue
-        poly, support = _snap_edges(poly, band)
-        lengths = [float(np.hypot(poly[(i + 1) % len(poly)][0] - poly[i][0], poly[(i + 1) % len(poly)][1] - poly[i][1]))
-                   for i in range(len(poly))]
-        ch = cs = None
-        if ceil_pts is not None:
-            r, c = g.idx(ceil_pts[:, 0], ceil_pts[:, 2])
-            ok = (r >= 0) & (r < g.shape[0]) & (c >= 0) & (c < g.shape[1])
-            inside = np.zeros(len(ceil_pts), bool); inside[ok] = mask[r[ok], c[ok]]
-            yc = ceil_pts[inside, 1]
-            if len(yc) > 200:
-                med = float(np.median(yc))
-                ch = med - floor_y
-                cs = float(np.median(np.abs(yc - med)) * 1.4826)
-        rooms.append(RoomGeom(int(lab), poly, lengths, support, _poly_area(poly), ch, cs))
-
-    # doors / adjacency: label boundaries inside free space
-    for i, a in enumerate(rooms):
-        ma = labels == a.label
-        ring = cv2.dilate(ma.astype(np.uint8), np.ones((3, 3), np.uint8)).astype(bool) & ~ma
-        for b in rooms:
-            if b.label == a.label:
-                continue
-            touch = ring & (labels == b.label)
-            if touch.sum() < 4:
-                continue
-            rr, cc = np.nonzero(touch)
-            w = max(np.ptp(rr), np.ptp(cc)) * g.res + g.res
-            x, z = g.xz(rr.mean(), cc.mean())
-            a.neighbours[b.label] = {"width_m": float(w), "center": (float(x), float(z))}
-    return rooms
 
 
 def raycast_free(g: Grid, cams: np.ndarray, rays: list[np.ndarray], floor_y: float, top_y: float,
@@ -238,43 +80,6 @@ def raycast_free(g: Grid, cams: np.ndarray, rays: list[np.ndarray], floor_y: flo
             cv2.line(canvas, c0, (int((x - g.x0) / g.res), int((z - g.z0) / g.res)), 1, 1)
         count += canvas
     return count
-
-
-def segment_rays(P: np.ndarray, cams: np.ndarray, rays: list[np.ndarray], floor_y: float, ceiling_y: float | None,
-                 res: float = 0.025, core_m: float = 0.5, min_room_m2: float = 1.0, min_views: int = 2):
-    """Like `segment`, but free space comes from ray casting instead of floor visibility."""
-    top = ceiling_y if ceiling_y is not None else floor_y + 2.3
-    band = P[(P[:, 1] > floor_y + 1.1) & (P[:, 1] < min(top - 0.2, floor_y + 2.0))]
-    g = make_grid(P, res)
-    wall = accumulate(g, band) >= 4
-    wall = cv2.morphologyEx(wall.astype(np.uint8), cv2.MORPH_OPEN, np.ones((2, 2), np.uint8)).astype(bool)
-    seen = raycast_free(g, cams, rays, floor_y, top) >= min_views
-    wall_d = cv2.dilate(wall.astype(np.uint8), np.ones((3, 3), np.uint8)).astype(bool)
-    free = seen & ~wall_d
-    free = cv2.morphologyEx(free.astype(np.uint8), cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8)).astype(bool) & ~wall_d
-    free = cv2.morphologyEx(free.astype(np.uint8), cv2.MORPH_OPEN, np.ones((3, 3), np.uint8)).astype(bool)
-
-    dist = ndi.distance_transform_edt(free) * res
-    cores, n = ndi.label(dist > core_m)
-    sizes = ndi.sum(np.ones_like(cores), cores, index=np.arange(1, n + 1)) * res * res
-    keep = np.zeros(n + 1, int); j = 0
-    for i, s in enumerate(sizes, 1):
-        if s >= 0.15:
-            j += 1; keep[i] = j
-    cores = keep[cores]
-    markers = cores.astype(np.int32).copy()
-    markers[~free] = j + 1
-    img = cv2.cvtColor(np.clip(255 - dist / max(dist.max(), 1e-6) * 255, 0, 255).astype(np.uint8), cv2.COLOR_GRAY2BGR)
-    cv2.watershed(img, markers)
-    labels = np.where((markers > 0) & (markers <= j) & free, markers, 0)
-    for lab in range(1, j + 1):
-        m = labels == lab
-        if m.sum() * res * res < min_room_m2:
-            labels[m] = 0
-        else:
-            # fill furniture holes enclosed by the room
-            labels[ndi.binary_fill_holes(m) & (labels == 0) & ~wall] = lab
-    return g, labels, wall, free
 
 
 # ---------------------------------------------------------------------------------------------
@@ -325,45 +130,6 @@ def close_doorways(wall: np.ndarray, res: float, gap_min: float = 0.6, gap_max: 
         doors.append({"rows": (int(rr.min()), int(rr.max())), "cols": (int(cc.min()), int(cc.max())),
                       "width_m": float(width), "along": "x" if span_c >= span_r else "z"})
     return closed, doors
-
-
-def segment_structure(P: np.ndarray, cams: np.ndarray, rays: list[np.ndarray], floor_y: float,
-                      ceiling_y: float | None, res: float = 0.025, min_room_m2: float = 1.0, min_views: int = 2,
-                      band_m: tuple[float, float] = (0.95, 1.6)):
-    """band_m: wall band above the floor used for segmentation. Chosen so that any walk following the
-    capture protocol covers it (a low-pointed walk barely observes >1.6 m; see scripts/height_profile.py)
-    while staying above most furniture (tables, beds, counters < 0.95 m)."""
-    top = ceiling_y if ceiling_y is not None else floor_y + 2.3
-    band = P[(P[:, 1] > floor_y + band_m[0]) & (P[:, 1] < min(top - 0.2, floor_y + band_m[1]))]
-    g = make_grid(P, res)
-    wall = accumulate(g, band) >= 4
-    wall = cv2.morphologyEx(wall.astype(np.uint8), cv2.MORPH_CLOSE, np.ones((3, 3), np.uint8)).astype(bool)
-    seen = raycast_free(g, cams, rays, floor_y, top) >= min_views
-    interior = ndi.binary_fill_holes(cv2.morphologyEx((seen | wall).astype(np.uint8), cv2.MORPH_CLOSE,
-                                                      np.ones((7, 7), np.uint8)).astype(bool))
-    closed, doors = close_doorways(wall, res)
-    wall_d = cv2.dilate(closed.astype(np.uint8), np.ones((3, 3), np.uint8)).astype(bool)
-    free = interior & ~wall_d
-    lab, n = ndi.label(free)          # 4-connectivity: a 1-px leak diagonal through a wall corner is not a door
-    labels = np.zeros_like(lab)
-    j = 0
-    sizes = ndi.sum(np.ones_like(lab), lab, index=np.arange(1, n + 1)) * res * res
-    for i in np.argsort(-sizes):      # deterministic order: largest room first
-        if sizes[i] >= min_room_m2:
-            j += 1
-            labels[lab == i + 1] = j
-    # which rooms each doorway connects: sample both sides perpendicular to the door line
-    for d in doors:
-        r0, r1 = d["rows"]; c0, c1 = d["cols"]
-        rc, cc_ = (r0 + r1) // 2, (c0 + c1) // 2
-        off = int(0.35 / res)
-        if d["along"] == "x":
-            sides = [(min(r1 + off, labels.shape[0] - 1), cc_), (max(r0 - off, 0), cc_)]
-        else:
-            sides = [(rc, min(c1 + off, labels.shape[1] - 1)), (rc, max(c0 - off, 0))]
-        d["rooms"] = sorted({int(labels[s]) for s in sides if labels[s] > 0})
-        d["center"] = g.xz(rc, cc_)
-    return g, labels, closed, free, doors
 
 
 def extend_walls(wall: np.ndarray, seen: np.ndarray, res: float, min_len: float = 0.5, max_ext: float = 1.5) -> np.ndarray:

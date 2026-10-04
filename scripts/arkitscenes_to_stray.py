@@ -36,7 +36,7 @@ conf_dir, intr_dir = src / "confidence", src / "lowres_wide_intrinsics"
 (out / "depth").mkdir(parents=True, exist_ok=True); (out / "confidence").mkdir(exist_ok=True)
 rows, k, used = [], 0, set()
 SCALE = 1920 / 256          # odometry/camera_matrix are expressed at the 1920x1440 reference resolution
-# ARKitScenes trajectories are in a z-up world (verified: scripts/up_axis_check.py, camera height std 0.30 m along z,
+# ARKitScenes trajectories are in a z-up world (verified: scripts/diagnostics/up_axis_check.py, camera height std 0.30 m along z,
 # floor peak along z). Stray/ARKit and our backend use y-up: new = (x, z, -y).
 W_ZUP_TO_YUP = np.array([[1, 0, 0, 0], [0, 0, 1, 0], [0, -1, 0, 0], [0, 0, 0, 1]], float)
 for line in (src / "lowres_wide.traj").read_text().split("\n"):

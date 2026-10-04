@@ -1,23 +1,13 @@
-"""Fetch pretrained weights / large binaries (not committed to git). Disclosed in the report.
+"""Pre-fetch every pretrained model the pipeline uses, so a live run never waits on a download.
 
-Models (all free):
-  - Depth Pro (Apple)      metric monocular depth, photo + video tiers
-  - SAM 2 (Meta)           damage / opening segmentation
-  - CLIP ViT-B/32          zero-shot damage classification
-  - (optional) VGGT / MASt3R   learned pose + geometry for video tier
+Both are Apache-2.0 (Depth Anything 3, ByteDance Seed), used by the video and photo tiers only:
+  depth-anything/DA3-LARGE-1.1    any-view: camera poses + depth across frames
+  depth-anything/DA3METRIC-LARGE  monocular metric depth (metres = output x focal / 300)
+The LiDAR tier uses no learned model.
+
+uv run python scripts/fetch_weights.py
 """
-from pathlib import Path
-from huggingface_hub import snapshot_download  # pip install huggingface_hub
+from huggingface_hub import snapshot_download
 
-W = Path("weights"); W.mkdir(exist_ok=True)
-MODELS = {
-    "depth_pro": "apple/DepthPro",
-    "clip": "openai/clip-vit-base-patch32",
-    "sam2": "facebook/sam2-hiera-small",
-}
-
-if __name__ == "__main__":
-    for name, repo in MODELS.items():
-        print(f"fetching {name} <- {repo}")
-        snapshot_download(repo_id=repo, local_dir=W / name)
-    print("done")
+for repo in ("depth-anything/DA3-LARGE-1.1", "depth-anything/DA3METRIC-LARGE"):
+    print("fetching", repo, "->", snapshot_download(repo_id=repo))

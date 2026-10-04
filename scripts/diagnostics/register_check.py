@@ -1,5 +1,5 @@
 """Are two captures the same place? Register their Manhattan-aligned wall maps (4 rotations x FFT translation search).
-uv run python scripts/register_check.py out/rooms/with_ceiling out/rooms/floor_only
+uv run python scripts/diagnostics/register_check.py out/rooms/with_ceiling out/rooms/floor_only
 """
 import sys
 from pathlib import Path

@@ -68,7 +68,7 @@ Design decisions I would defend live:
 | Calibration | honest intervals | LiDAR 91% coverage vs laser, video/photo 100% vs LiDAR (in-sample) | PARTIAL |
 | Head-to-head vs consumer app | beat/tie >= 70% | not run: no device | NOT DONE |
 
-**Where the LiDAR error comes from** (laser, `scripts/laser_gt.py`, `scripts/scale_check.py`). The fused cloud is
+**Where the LiDAR error comes from** (laser, `scripts/laser_gt.py`, `scripts/diagnostics/scale_check.py`). The fused cloud is
 metrically right: similarity ICP onto the laser scan gives scale 1.008 and 1.9 cm RMSE. The error is in which
 surface a room side snaps to. Per-side comparison against laser wall faces (measured above furniture height):
 several sides land within 1 cm (-0.6, -0.7, -0.9, -1.2 cm), many land **18-24 cm outside, i.e. on the far face of

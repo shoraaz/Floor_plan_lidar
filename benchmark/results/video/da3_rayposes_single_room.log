@@ -1,0 +1,25 @@
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+W1002 21:45:50.850000 20872 Lib\site-packages\torch\utils\flop_counter.py:29] triton not found; flop counting will not work for triton kernels
+A matching Triton is not available, some optimizations will not be enabled
+Traceback (most recent call last):
+  File "C:\Users\shour\Desktop\property project\roomscan\.venv\Lib\site-packages\xformers\__init__.py", line 57, in _is_triton_available
+    import triton  # noqa
+    ^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'triton'
+[93m[WARN ] Dependency `gsplat` is required for rendering 3DGS. Install via: pip install git+https://github.com/nerfstudio-project/gsplat.git@0b4dddf04cb687367602c01196913cde6a743d70[0m
+[97m[INFO ] using MLP layer as FFN[0m
+[97m[INFO ] Processed Images Done taking 0.20253396034240723 seconds. Shape:  torch.Size([24, 3, 378, 504])[0m
+[97m[INFO ] Selecting reference view using strategy: saddle_balanced[0m
+[97m[INFO ] Model Forward Pass Done. Time: 25.725313425064087 seconds[0m
+[97m[INFO ] Conversion to Prediction Done. Time: 0.035898447036743164 seconds[0m
+chunk 0: path 2.39 m | as world->cam: ATE 16.2 cm | as cam->world: ATE 25.3 cm
+[97m[INFO ] Processed Images Done taking 0.19913101196289062 seconds. Shape:  torch.Size([24, 3, 378, 504])[0m
+[97m[INFO ] Selecting reference view using strategy: saddle_balanced[0m
+[97m[INFO ] Model Forward Pass Done. Time: 27.93109893798828 seconds[0m
+[97m[INFO ] Conversion to Prediction Done. Time: 0.014671564102172852 seconds[0m
+chunk 40: path 3.15 m | as world->cam: ATE 5.0 cm | as cam->world: ATE 21.2 cm
+[97m[INFO ] Processed Images Done taking 0.13651704788208008 seconds. Shape:  torch.Size([24, 3, 378, 504])[0m
+[97m[INFO ] Selecting reference view using strategy: saddle_balanced[0m
+[97m[INFO ] Model Forward Pass Done. Time: 25.55348563194275 seconds[0m
+[97m[INFO ] Conversion to Prediction Done. Time: 0.012130260467529297 seconds[0m
+chunk 80: path 3.00 m | as world->cam: ATE 13.0 cm | as cam->world: ATE 22.1 cm

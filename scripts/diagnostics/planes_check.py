@@ -1,5 +1,5 @@
 """Run floor/ceiling + Manhattan alignment on explored clouds.
-uv run python scripts/planes_check.py
+uv run python scripts/diagnostics/planes_check.py
 """
 from pathlib import Path
 import numpy as np

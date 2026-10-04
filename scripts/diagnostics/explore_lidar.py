@@ -1,6 +1,6 @@
 """Sanity-check axis conventions and geometry on real captures.
 
-uv run python scripts/explore_lidar.py <capture_dir> <out_dir>
+uv run python scripts/diagnostics/explore_lidar.py <capture_dir> <out_dir>
 Writes: cloud.ply, height_hist.png, topdown.png, stats.txt
 """
 import sys

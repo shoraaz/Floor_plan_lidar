@@ -11,7 +11,7 @@ Iterations on the declared fix (structure-only segmentation), all regenerable wi
 | experiment | it3 + snapping band 0.95-1.6 m (not shipped) | 9/8 | ~same | 2/25 | 10.2% |
 
 Findings
-- it2 -> it3: `floor_only` walk was aimed low (scripts/height_profile.py: ~4.8% of its points above 1.6 m,
+- it2 -> it3: `floor_only` walk was aimed low (scripts/diagnostics/height_profile.py: ~4.8% of its points above 1.6 m,
   ~0% above 2.2 m, vs 11%/21% for `with_ceiling`). Wall band 1.1-2.0 m broke its walls, merging rooms.
   Same declared root cause (segmentation depends on what the walk observed); mechanism now identified.
 - experiment: snapping band is not the remaining cause.
@@ -34,6 +34,6 @@ it4 findings
 it5 findings
 - Residual rotation between captures 0.75 -> 0.22 deg (per-capture yaw moved 0.5 / 0.86 deg). Yaw refinement works.
 - Wall gate and footprint got worse: the room split is sensitive to sub-degree rotation (cells flip between rooms).
-- scripts/room_dims_check.py: matched rooms' wall-to-wall extents differ by 3-138 cm (median 20 cm); the best-matched
+- scripts/diagnostics/room_dims_check.py: matched rooms' wall-to-wall extents differ by 3-138 cm (median 20 cm); the best-matched
   room (IoU 0.91) differs 3.0 / 5.9 cm. So beyond partitioning, the per-room polygon extraction itself
   (cell voting + local face lines) is not stable; raw wall surfaces agree to ~1 cm (ICP), so the error is in extraction.

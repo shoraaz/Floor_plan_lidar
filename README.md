@@ -1,4 +1,4 @@
-# roomscan
+# Floor_plan_lidar (roomscan)
 
 Phone capture -> dimensioned, stitched floor plan with an interval on every number.
 Three input tiers (LiDAR, video, photos) share one geometry backend and one output contract
@@ -40,7 +40,7 @@ deleting `cache/` re-runs the live path.
 
 - **LiDAR front end** (`tiers/lidar.py`, `geometry/pointcloud.py`): back-projects confidence-filtered depth with
   ARKit poses. Stray Scanner stores poses camera->world with an OpenCV camera frame in an ARKit y-up world
-  (verified: `scripts/test_convention.py`).
+  (verified: `scripts/diagnostics/test_convention.py`).
 - **Video front end** (`tiers/video.py`, `geometry/da3_frontend.py`): keyframes -> Depth Anything 3 any-view model
   in overlapping 24-frame chunks (poses + depth), chained by depth ratios on shared frames, metric scale from
   DA3METRIC (units verified against LiDAR on the same frames). COLMAP SfM is kept as `frontend="colmap"`

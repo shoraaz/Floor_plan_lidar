@@ -1,5 +1,5 @@
 """Calibrate DA3METRIC-LARGE output units against LiDAR depth on the same frames.
-uv run python scripts/da3_vs_lidar.py <stray_capture_dir>
+uv run python scripts/diagnostics/da3_vs_lidar.py <stray_capture_dir>
 """
 import sys
 from pathlib import Path

@@ -1,5 +1,5 @@
 $ErrorActionPreference = "Continue"
-Set-Location (Split-Path $PSScriptRoot -Parent)
+Set-Location (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent)
 $py = ".\.venv\Scripts\python.exe"
 $base = Resolve-Path ".."
 $caps = @{
@@ -9,6 +9,6 @@ $caps = @{
 }
 New-Item -ItemType Directory -Force out\explore | Out-Null
 foreach ($k in $caps.Keys) {
-  & $py scripts\explore_lidar.py (Join-Path $base $caps[$k]) "out\explore\$k" *> "out\explore\$k.log"
+  & $py scripts\diagnostics\explore_lidar.py (Join-Path $base $caps[$k]) "out\explore\$k" *> "out\explore\$k.log"
 }
 "ALL_DONE" | Set-Content out\explore\done.flag

@@ -1,14 +1,9 @@
-"""Drift accountability for the LiDAR tier: start-end loop closure, correction distributed along the walk.
+"""Drift accountability for the LiDAR tier: pose graph over ARKit keyframes with ICP-verified revisit loops.
 
-ARKit VIO drifts slowly; a protocol-following walk ends where it started (capture protocol rule), so:
-  1. build a local cloud from the first and last `win` seconds of the walk (same world frame, raw poses)
-  2. ICP (point-to-plane, coarse-to-fine) the END submap onto the START submap -> T_corr = accumulated drift
-  3. accept only if the ICP is confident (fitness, rmse) and the correction is small enough to be drift, not a
-     mis-registration (< 0.6 m, < 5 deg)
-  4. distribute: frame i at arc-length fraction a gets  T_i' = Interp(I, T_corr, a) @ T_i
-     (rotation slerp, translation linear): the closed-form optimum of a pose graph with one loop edge and
-     uniform odometry weights
-If no confident loop is found, poses stay as reported and the plan says so (never silently "as-is").
+Nodes = keyframes with their ARKit poses; odometry edges between consecutive keyframes; loop edges where the walk
+revisits a place looking the same way, each verified by point-to-plane ICP of local submaps and accepted only under
+strict thresholds; solved with Open3D global optimisation (line-process pruning). If no loop verifies, poses stay as
+reported and the plan says so. Ablation: `roomscan run --no-drift-correction`, `scripts/drift_ablation.py`.
 """
 from __future__ import annotations
 import numpy as np
@@ -27,51 +22,6 @@ def _submap(frames, sel, backproject, scale_intrinsics, voxel=0.03):
     pcd = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(np.concatenate(pts))).voxel_down_sample(voxel)
     pcd.estimate_normals(o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=30))
     return pcd
-
-
-def loop_correction(frames, win: int = 25, max_t: float = 0.6, max_rot_deg: float = 5.0):
-    """Return (T_corr 4x4 or None, info dict). `frames` from load_stray (already strided)."""
-    import open3d as o3d
-    from .pointcloud import backproject
-    from ..tiers.lidar import scale_intrinsics
-    n = len(frames)
-    if n < 3 * win:
-        return None, {"loop": "too few frames"}
-    c0, c1 = frames[0][0][:3, 3], frames[-1][0][:3, 3]
-    gap = float(np.linalg.norm(c1 - c0))
-    if gap > 2.0:
-        return None, {"loop": f"walk does not return to start (gap {gap:.2f} m)", "gap_m": gap}
-    A = _submap(frames, range(0, win), backproject, scale_intrinsics)
-    B = _submap(frames, range(n - win, n), backproject, scale_intrinsics)
-    T = np.eye(4)
-    reg = None
-    for thr in (0.20, 0.08, 0.03):
-        reg = o3d.pipelines.registration.registration_icp(
-            B, A, thr, T, o3d.pipelines.registration.TransformationEstimationPointToPlane())
-        T = reg.transformation
-    t = float(np.linalg.norm(T[:3, 3]))
-    rot = float(np.degrees(np.linalg.norm(R.from_matrix(T[:3, :3]).as_rotvec())))
-    info = {"gap_m": gap, "icp_fitness": float(reg.fitness), "icp_rmse_m": float(reg.inlier_rmse),
-            "corr_t_m": t, "corr_rot_deg": rot}
-    if reg.fitness < 0.3 or reg.inlier_rmse > 0.02 or t > max_t or rot > max_rot_deg:
-        info["loop"] = "rejected (low-confidence or implausible correction)"
-        return None, info
-    info["loop"] = "accepted"
-    return T, info
-
-
-def apply_correction(frames, T_corr):
-    """Distribute T_corr along the walk by arc length (pose-graph optimum for a single loop)."""
-    C = np.array([f[0][:3, 3] for f in frames])
-    s = np.r_[0, np.cumsum(np.linalg.norm(np.diff(C, axis=0), axis=1))]
-    a = s / max(s[-1], 1e-9)
-    sl = Slerp([0, 1], R.from_matrix(np.stack([np.eye(3), T_corr[:3, :3]])))
-    out = []
-    for (T, K, dp, cp), ai in zip(frames, a):
-        D = np.eye(4); D[:3, :3] = sl(ai).as_matrix(); D[:3, 3] = ai * T_corr[:3, 3]
-        out.append((D @ T, K, dp, cp))
-    return out
-
 
 
 # --------------------------------------------------------------------------------------------------

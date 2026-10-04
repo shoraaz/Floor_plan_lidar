@@ -1,5 +1,5 @@
 """Diagnostic: per matched room, compare wall-to-wall extents (what a tape measures) between two captures.
-uv run python scripts/room_dims_check.py <capA> <capB> <planA> <planB>
+uv run python scripts/diagnostics/room_dims_check.py <capA> <capB> <planA> <planB>
 """
 import sys, json
 from pathlib import Path

@@ -1,9 +1,9 @@
-"""Snap room labels to an arrangement of measured wall-face lines.
+"""Room outlines snapped to measured wall faces.
 
-Wall faces show up as sharp peaks when wall-band points are histogrammed along x (for walls of
-constant x) and z. Lines at those peaks cut the plan into rectangular cells; each cell joins the
-room label covering most of it. Room polygons are unions of cells, so every edge lies on a
-measured wall face (not on a morphology artefact). Thin cells between the two faces of a wall stay empty.
+snap_rooms_rect (used by the backend): each room modelled as an axis-aligned rectangle whose sides are snapped
+independently to the ROOM-SIDE wall face (sub-cm median of face points). Rooms filling < 80% of that rectangle fall
+back to a rectilinear outline from per-room wall lines (snap_rooms_local), whose edges are then also moved onto the
+room-side face (_refine_rectilinear): laser ground truth showed the fallback could include a wall's thickness.
 """
 from __future__ import annotations
 import numpy as np
@@ -12,92 +12,6 @@ from scipy.signal import find_peaks
 from scipy import ndimage as ndi
 
 from .rooms import Grid, RoomGeom, _poly_area
-
-
-def face_lines(P_band: np.ndarray, axis: int, bin_m: float = 0.01, min_frac: float = 0.03) -> np.ndarray:
-    v = P_band[:, axis]
-    h, e = np.histogram(v, bins=np.arange(v.min() - 0.05, v.max() + 0.05, bin_m))
-    h = ndi.gaussian_filter1d(h.astype(float), 1.0)
-    pk, _ = find_peaks(h, prominence=min_frac * h.max(), distance=int(0.06 / bin_m))
-    return (e[pk] + e[pk + 1]) / 2
-
-
-def snap_rooms(g: Grid, labels: np.ndarray, P: np.ndarray, floor_y: float, ceiling_y: float | None,
-               wall: np.ndarray | None = None, min_cover: float = 0.5, min_room_m2: float = 1.0):
-    """wall: boolean wall-occupancy grid; wall pixels are neutral when voting a cell's room."""
-    top = ceiling_y if ceiling_y is not None else floor_y + 2.3
-    band = P[(P[:, 1] > floor_y + 0.9) & (P[:, 1] < min(top - 0.15, floor_y + 2.1))]
-    xs = face_lines(band, 0)
-    zs = face_lines(band, 2)
-    xb = np.concatenate([[g.x0], xs, [g.x0 + g.shape[1] * g.res]])
-    zb = np.concatenate([[g.z0], zs, [g.z0 + g.shape[0] * g.res]])
-    cb = np.clip(((xb - g.x0) / g.res).round().astype(int), 0, g.shape[1])
-    rb = np.clip(((zb - g.z0) / g.res).round().astype(int), 0, g.shape[0])
-
-    nl = labels.max()
-    cell_lab = np.zeros((len(zb) - 1, len(xb) - 1), int)
-    for i in range(len(rb) - 1):
-        for j in range(len(cb) - 1):
-            blk = labels[rb[i]:rb[i + 1], cb[j]:cb[j + 1]]
-            if blk.size == 0:
-                continue
-            if wall is not None:
-                wb = wall[rb[i]:rb[i + 1], cb[j]:cb[j + 1]]
-                blk = blk[~wb]
-                if blk.size < 0.3 * wb.size:      # mostly wall: this is a wall slab, not floor
-                    continue
-            cnt = np.bincount(blk.ravel(), minlength=nl + 1)
-            lab = int(np.argmax(cnt[1:]) + 1) if nl else 0
-            if nl and cnt[lab] >= min_cover * blk.size:
-                cell_lab[i, j] = lab
-
-    ceil_pts = P[np.abs(P[:, 1] - ceiling_y) < 0.08] if ceiling_y is not None else None
-    rooms = []
-    for lab in np.unique(cell_lab):
-        if lab == 0:
-            continue
-        cm = (cell_lab == lab).astype(np.uint8)
-        n, comp = cv2.connectedComponents(cm, connectivity=4)
-        if n > 2:   # keep largest component
-            sizes = [(comp == k).sum() for k in range(1, n)]
-            cm = (comp == 1 + int(np.argmax(sizes))).astype(np.uint8)
-        # contour in cell-index space -> vertices are cell corners -> map to line coords
-        up = cv2.resize(cm, (cm.shape[1] * 4, cm.shape[0] * 4), interpolation=cv2.INTER_NEAREST)
-        up = np.pad(up, 1)
-        cs, _ = cv2.findContours(up, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        c = max(cs, key=cv2.contourArea)[:, 0, :]
-        poly = []
-        for col, row in c:
-            # pixel corner -> nearest cell boundary index
-            jx = int(round((col - 1) / 4)); iz = int(round((row - 1) / 4))
-            jx = min(max(jx, 0), len(xb) - 1); iz = min(max(iz, 0), len(zb) - 1)
-            pt = (float(xb[jx]), float(zb[iz]))
-            if not poly or pt != poly[-1]:
-                poly.append(pt)
-        poly = _clean(poly)
-        if len(poly) < 4:
-            continue
-        area = _poly_area(poly)
-        if area < min_room_m2:
-            continue
-        lengths, support = [], []
-        for k in range(len(poly)):
-            p, q = poly[k], poly[(k + 1) % len(poly)]
-            L = abs(q[0] - p[0]) + abs(q[1] - p[1])
-            lengths.append(float(L))
-            support.append(_support(band, p, q))
-        ch = cs_ = None
-        if ceil_pts is not None:
-            m = labels == lab
-            r, cc = g.idx(ceil_pts[:, 0], ceil_pts[:, 2])
-            ok = (r >= 0) & (r < g.shape[0]) & (cc >= 0) & (cc < g.shape[1])
-            inside = np.zeros(len(ceil_pts), bool); inside[ok] = m[r[ok], cc[ok]]
-            yc = ceil_pts[inside, 1]
-            if len(yc) > 200:
-                med = float(np.median(yc)); ch = med - floor_y
-                cs_ = float(np.median(np.abs(yc - med)) * 1.4826)
-        rooms.append(RoomGeom(int(lab), poly, lengths, support, area, ch, cs_))
-    return rooms, xs, zs, cell_lab
 
 
 def _clean(poly):

@@ -1,5 +1,5 @@
 """Which camera convention does DA3 extrinsics use? Test one chunk against LiDAR odometry, both ways.
-uv run python scripts/da3_convention_check.py <stray_capture_dir>
+uv run python scripts/diagnostics/da3_convention_check.py <stray_capture_dir>
 """
 import sys, hashlib
 from pathlib import Path

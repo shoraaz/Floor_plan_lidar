@@ -1,5 +1,5 @@
 """Is our LiDAR-tier cloud metrically scaled? Similarity ICP (with scale) of our fused cloud onto the laser scan.
-uv run python scripts/scale_check.py <stray_capture> <laser.ply> [...]
+uv run python scripts/diagnostics/scale_check.py <stray_capture> <laser.ply> [...]
 """
 import sys
 from pathlib import Path
