@@ -3,7 +3,7 @@
   "coarse_overlap": 0.8615441918373108,
   "coarse_rot_deg": 0,
   "icp_fitness": 0.8560516004050543,
-  "icp_rmse_m": 0.0071054599056212765,
+  "icp_rmse_m": 0.007105459905621277,
   "residual_rot_deg": 0.0020502567159113028
  },
  "rooms": [

@@ -9,7 +9,7 @@
    "coarse_overlap": 0.7849956154823303,
    "coarse_rot_deg": 90,
    "icp_fitness": 0.6776592485307634,
-   "icp_rmse_m": 0.008596421699489301,
+   "icp_rmse_m": 0.0085964216994893,
    "residual_rot_deg": 0.7998864302826547
   },
   "walls_scored": 6,
@@ -19,7 +19,7 @@
   "within_2cm": 2,
   "within_5cm": 2,
   "within_1pct": 2,
-  "interval_coverage": 0.83,
+  "interval_coverage": 1.0,
   "laser_ceiling_global_m": 2.3065
  },
  "walls": [
@@ -57,7 +57,7 @@
    "gt_m": 7.2064,
    "err_cm": 14.96,
    "err_pct": 2.08,
-   "covered": false
+   "covered": true
   },
   {
    "room": "room2",

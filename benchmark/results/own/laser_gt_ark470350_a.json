@@ -19,7 +19,7 @@
   "within_2cm": 0,
   "within_5cm": 0,
   "within_1pct": 0,
-  "interval_coverage": 0.42,
+  "interval_coverage": 1.0,
   "laser_ceiling_global_m": 2.3065
  },
  "walls": [
@@ -30,7 +30,7 @@
    "gt_m": 5.8373,
    "err_cm": 25.36,
    "err_pct": 4.34,
-   "covered": false
+   "covered": true
   },
   {
    "room": "room1",
@@ -72,7 +72,7 @@
    "gt_m": 0.5361,
    "err_cm": 20.49,
    "err_pct": 38.22,
-   "covered": false
+   "covered": true
   },
   {
    "room": "room2",
@@ -87,7 +87,7 @@
    "gt_m": 0.5361,
    "err_cm": 20.49,
    "err_pct": 38.22,
-   "covered": false
+   "covered": true
   },
   {
    "room": "room3",
@@ -150,7 +150,7 @@
    "gt_m": 0.7442,
    "err_cm": 45.2,
    "err_pct": 60.73,
-   "covered": false
+   "covered": true
   },
   {
    "room": "room5",
@@ -159,7 +159,7 @@
    "gt_m": 1.6403,
    "err_cm": 20.92,
    "err_pct": 12.75,
-   "covered": false
+   "covered": true
   },
   {
    "room": "room5",
@@ -168,7 +168,7 @@
    "gt_m": 0.7442,
    "err_cm": 45.2,
    "err_pct": 60.73,
-   "covered": false
+   "covered": true
   },
   {
    "room": "room5",
@@ -177,7 +177,7 @@
    "gt_m": 1.6403,
    "err_cm": 20.92,
    "err_pct": 12.75,
-   "covered": false
+   "covered": true
   }
  ],
  "ceilings": [

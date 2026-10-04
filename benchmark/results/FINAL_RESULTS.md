@@ -16,7 +16,7 @@ available. Regenerate: `reproduction/get_arkitscenes.ps1`, `reproduction/run_fin
 | Drift accountability | method + on/off footprint ablation | pose graph + ICP-verified revisit loops, ON by default; ablation in `drift_ablation_*.log` (no measured benefit on sample data) | PARTIAL |
 | Photo-tier whole-property stitch | one stitched plan, correct adjacency, footprint +/-8% | see tier table: collapses / flagged UNRELIABLE | FAIL |
 | Video tier | walls +/-3% | see tier table | FAIL |
-| Calibration / no confident garbage | intervals honest at every tier | LiDAR interval coverage vs laser: 45% | PARTIAL |
+| Calibration / no confident garbage | intervals honest at every tier | LiDAR interval coverage vs laser: 91% | PARTIAL |
 
 ## Own benchmark: LiDAR tier vs Faro laser ground truth
 

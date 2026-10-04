@@ -24,6 +24,16 @@ for line in Path("fixloop/after/room_dims.txt").read_text().splitlines():
     if m and a and float(m.group(2)) >= 0.9:
         lid.append(float(m.group(1)) / 100 / 2 / float(a.group(1)))
 res["lidar"] = lid
+# Prefer laser ground truth for LiDAR when available (own benchmark): cross-capture agreement underestimates true error
+laser = [abs(w["err_pct"]) / 100 for p in Path("benchmark/results/own").glob("laser_gt_ark*.json")
+         for w in json.loads(p.read_text())["walls"] if w.get("gt_m") and abs(w["err_pct"]) < 100]
+laser_walls = [w for p in Path("benchmark/results/own").glob("laser_gt_ark*.json")
+               for w in json.loads(p.read_text())["walls"] if w.get("gt_m") and w["gt_m"] > 0.3]
+lidar_abs = None
+if len(laser_walls) >= 5:
+    # errors are ~constant in cm (wrong-face picks), so model half-width = max(rel x L, abs)
+    res["lidar"] = [abs(w["err_pct"]) / 100 for w in laser_walls if w["gt_m"] >= 2.0] or res["lidar"]
+    lidar_abs = conformal_quantile(np.array([abs(w["err_cm"]) / 100 for w in laser_walls]), 0.90)
 cal, report = {}, {}
 for tier, r in res.items():
     r = np.array(r)
@@ -40,6 +50,8 @@ for tier, r in res.items():
     cal[tier] = {k: float(v * ratio) for k, v in DEFAULT_REL[tier].items()}
     cal[tier]["wall"] = float(w)
     report[tier] = {"wall_rel_halfwidth": round(w, 4), "method": how, "residuals": [round(float(x), 4) for x in r]}
+if lidar_abs is not None:
+    cal["lidar"]["wall_abs"] = float(lidar_abs); report["lidar"]["wall_abs_m"] = round(float(lidar_abs), 4)
 Path("benchmark/calibration.json").write_text(json.dumps(cal, indent=1))
 Path("benchmark/results/calibration_fit.json").write_text(json.dumps(report, indent=1))
 print(json.dumps(report, indent=1))

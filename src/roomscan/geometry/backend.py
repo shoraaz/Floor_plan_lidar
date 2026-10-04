@@ -44,7 +44,9 @@ def plan_from_cloud(P: np.ndarray, cams: np.ndarray, rays: list[np.ndarray], cap
         for i in range(n):
             p, q = rg.polygon[i], rg.polygon[(i + 1) % n]
             qs = max(rg.wall_support[i], 0.15) * quality_scale * (1.0 if enclosed else 0.5)
-            walls.append(Wall(p, q, Interval.from_rel(rg.wall_lengths[i], calibration.inflate(cal["wall"], qs))))
+            L_ = rg.wall_lengths[i]
+            hw = max(L_ * calibration.inflate(cal["wall"], qs), cal.get("wall_abs", 0.0))
+            walls.append(Wall(p, q, Interval(L_, max(L_ - hw, 0.0), L_ + hw)))
         if rg.ceiling_height is not None and reliable:
             half = max(cal["ceiling"] * rg.ceiling_height / max(quality_scale, 0.15), 2 * (rg.ceiling_spread or 0.0))
             ceil = Interval.from_abs(rg.ceiling_height, half)

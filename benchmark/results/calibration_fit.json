@@ -20,13 +20,22 @@
   ]
  },
  "lidar": {
-  "wall_rel_halfwidth": 0.0122,
-  "method": "4 residuals (<5): max(default, 1.25 x worst)",
+  "wall_rel_halfwidth": 0.0434,
+  "method": "conformal q90 of 12 residuals",
   "residuals": [
-   0.004,
-   0.0031,
-   0.0059,
-   0.0098
-  ]
+   0.0434,
+   0.0152,
+   0.0434,
+   0.0152,
+   0.0394,
+   0.0394,
+   0.0025,
+   0.0208,
+   0.0025,
+   0.0208,
+   0.0233,
+   0.0233
+  ],
+  "wall_abs_m": 0.4645
  }
 }
