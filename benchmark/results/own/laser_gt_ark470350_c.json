@@ -1,0 +1,151 @@
+{
+ "summary": {
+  "capture": "ark470350_c",
+  "laser_scans": [
+   "188542.ply",
+   "188545.ply"
+  ],
+  "registration": {
+   "coarse_overlap": 0.7849956154823303,
+   "coarse_rot_deg": 90,
+   "icp_fitness": 0.6776592485307634,
+   "icp_rmse_m": 0.008596421699489301,
+   "residual_rot_deg": 0.7998864302826547
+  },
+  "walls_scored": 6,
+  "walls_total": 12,
+  "median_abs_err_cm": 5.09,
+  "within_1cm": 0,
+  "within_2cm": 2,
+  "within_5cm": 2,
+  "within_1pct": 2,
+  "interval_coverage": 0.83,
+  "laser_ceiling_global_m": 2.3065
+ },
+ "walls": [
+  {
+   "room": "room1",
+   "wall": 0,
+   "ours_m": 4.625,
+   "gt_m": 4.6368,
+   "err_cm": -1.18,
+   "err_pct": -0.25,
+   "covered": true
+  },
+  {
+   "room": "room1",
+   "wall": 1,
+   "ours_m": 7.356,
+   "gt_m": 7.2064,
+   "err_cm": 14.96,
+   "err_pct": 2.08,
+   "covered": true
+  },
+  {
+   "room": "room1",
+   "wall": 2,
+   "ours_m": 4.625,
+   "gt_m": 4.6368,
+   "err_cm": -1.18,
+   "err_pct": -0.25,
+   "covered": true
+  },
+  {
+   "room": "room1",
+   "wall": 3,
+   "ours_m": 7.356,
+   "gt_m": 7.2064,
+   "err_cm": 14.96,
+   "err_pct": 2.08,
+   "covered": false
+  },
+  {
+   "room": "room2",
+   "wall": 0,
+   "ours_m": 1.9707,
+   "gt_m": null
+  },
+  {
+   "room": "room2",
+   "wall": 1,
+   "ours_m": 2.237,
+   "gt_m": 2.186,
+   "err_cm": 5.09,
+   "err_pct": 2.33,
+   "covered": true
+  },
+  {
+   "room": "room2",
+   "wall": 2,
+   "ours_m": 1.9707,
+   "gt_m": null
+  },
+  {
+   "room": "room2",
+   "wall": 3,
+   "ours_m": 2.237,
+   "gt_m": 2.186,
+   "err_cm": 5.09,
+   "err_pct": 2.33,
+   "covered": true
+  },
+  {
+   "room": "room3",
+   "wall": 0,
+   "ours_m": 2.2346,
+   "gt_m": null
+  },
+  {
+   "room": "room3",
+   "wall": 1,
+   "ours_m": 0.9,
+   "gt_m": null
+  },
+  {
+   "room": "room3",
+   "wall": 2,
+   "ours_m": 2.2346,
+   "gt_m": null
+  },
+  {
+   "room": "room3",
+   "wall": 3,
+   "ours_m": 0.9,
+   "gt_m": null
+  }
+ ],
+ "ceilings": [
+  {
+   "room": "room1",
+   "gt_m": 2.3089,
+   "ours_m": 2.315,
+   "err_cm": 0.61
+  },
+  {
+   "room": "room2",
+   "gt_m": 2.3057,
+   "ours_m": 2.3242,
+   "err_cm": 1.85
+  }
+ ],
+ "doors": [
+  {
+   "room": "room1",
+   "ours_m": 1.115,
+   "gt_m": 1.15,
+   "err_cm": -3.5
+  },
+  {
+   "room": "room2",
+   "ours_m": 1.115,
+   "gt_m": 1.145,
+   "err_cm": -3.0
+  },
+  {
+   "room": "room2",
+   "ours_m": 0.89,
+   "gt_m": 1.08,
+   "err_cm": -19.0
+  }
+ ]
+}

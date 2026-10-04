@@ -1,0 +1,308 @@
+{
+ "registration": {
+  "coarse_overlap": 0.6189413666725159,
+  "coarse_rot_deg": 0,
+  "icp_fitness": 0.6013600266298921,
+  "icp_rmse_m": 0.009253085513746147,
+  "residual_rot_deg": 0.5803548336913735
+ },
+ "rooms": [
+  {
+   "room_a": "room1",
+   "room_b": "room1",
+   "iou": 0.897,
+   "area_a": 12.473,
+   "area_b": 11.42
+  },
+  {
+   "room_a": "room2",
+   "room_b": "room3",
+   "iou": 0.639,
+   "area_a": 9.45,
+   "area_b": 6.948
+  },
+  {
+   "room_a": "room3",
+   "room_b": "room2",
+   "iou": 0.918,
+   "area_a": 8.388,
+   "area_b": 8.613
+  },
+  {
+   "room_a": "room4",
+   "room_b": "room4",
+   "iou": 0.465,
+   "area_a": 5.036,
+   "area_b": 5.99
+  },
+  {
+   "room_a": "room5",
+   "room_b": "room1",
+   "iou": 0.0,
+   "area_a": 3.424,
+   "area_b": 11.42
+  },
+  {
+   "room_a": "room6",
+   "room_b": "room5",
+   "iou": 0.505,
+   "area_a": 3.291,
+   "area_b": 5.411
+  },
+  {
+   "room_a": "room7",
+   "room_b": "room5",
+   "iou": 0.919,
+   "area_a": 5.364,
+   "area_b": 5.411
+  },
+  {
+   "room_a": "room8",
+   "room_b": "room1",
+   "iou": 0.0,
+   "area_a": 5.928,
+   "area_b": 11.42
+  },
+  {
+   "room_a": "room9",
+   "room_b": "room7",
+   "iou": 0.84,
+   "area_a": 2.411,
+   "area_b": 2.526
+  },
+  {
+   "room_a": "room10",
+   "room_b": "room1",
+   "iou": 0.0,
+   "area_a": 1.951,
+   "area_b": 11.42
+  },
+  {
+   "room_a": "room11",
+   "room_b": "room4",
+   "iou": 0.236,
+   "area_a": 1.756,
+   "area_b": 5.99
+  }
+ ],
+ "walls": [
+  {
+   "room": "room1",
+   "wall_len_a": 2.8694,
+   "wall_len_b": 2.8713,
+   "diff_cm": 0.19,
+   "face_offset_cm": 24.26,
+   "pass": true,
+   "note": ""
+  },
+  {
+   "room": "room1",
+   "wall_len_a": 4.3471,
+   "wall_len_b": 3.9773,
+   "diff_cm": 36.98,
+   "face_offset_cm": 3.09,
+   "pass": false,
+   "note": ""
+  },
+  {
+   "room": "room1",
+   "wall_len_a": 2.8694,
+   "wall_len_b": 2.8713,
+   "diff_cm": 0.19,
+   "face_offset_cm": 12.74,
+   "pass": true,
+   "note": ""
+  },
+  {
+   "room": "room1",
+   "wall_len_a": 4.3471,
+   "wall_len_b": 3.9773,
+   "diff_cm": 36.98,
+   "face_offset_cm": 2.91,
+   "pass": false,
+   "note": ""
+  },
+  {
+   "room": "room2",
+   "wall_len_a": 3.1429,
+   "wall_len_b": 2.2859,
+   "diff_cm": 85.7,
+   "face_offset_cm": 27.98,
+   "pass": false,
+   "note": ""
+  },
+  {
+   "room": "room2",
+   "wall_len_a": 3.0068,
+   "wall_len_b": null,
+   "diff_cm": null,
+   "face_offset_cm": null,
+   "pass": false,
+   "note": "no matching wall in B"
+  },
+  {
+   "room": "room2",
+   "wall_len_a": 3.1429,
+   "wall_len_b": 2.1904,
+   "diff_cm": 95.25,
+   "face_offset_cm": 28.64,
+   "pass": false,
+   "note": ""
+  },
+  {
+   "room": "room2",
+   "wall_len_a": 3.0068,
+   "wall_len_b": 3.1215,
+   "diff_cm": 11.47,
+   "face_offset_cm": 5.27,
+   "pass": false,
+   "note": ""
+  },
+  {
+   "room": "room3",
+   "wall_len_a": 2.6399,
+   "wall_len_b": 2.5953,
+   "diff_cm": 4.46,
+   "face_offset_cm": 17.69,
+   "pass": false,
+   "note": ""
+  },
+  {
+   "room": "room3",
+   "wall_len_a": 3.1773,
+   "wall_len_b": 3.3188,
+   "diff_cm": 14.14,
+   "face_offset_cm": 0.13,
+   "pass": false,
+   "note": ""
+  },
+  {
+   "room": "room3",
+   "wall_len_a": 2.6399,
+   "wall_len_b": 2.5953,
+   "diff_cm": 4.46,
+   "face_offset_cm": 3.56,
+   "pass": false,
+   "note": ""
+  },
+  {
+   "room": "room3",
+   "wall_len_a": 3.1773,
+   "wall_len_b": 3.3188,
+   "diff_cm": 14.14,
+   "face_offset_cm": 4.6,
+   "pass": false,
+   "note": ""
+  },
+  {
+   "room": "room6",
+   "wall_len_a": 1.5983,
+   "wall_len_b": 1.7093,
+   "diff_cm": 11.1,
+   "face_offset_cm": 2.94,
+   "pass": false,
+   "note": ""
+  },
+  {
+   "room": "room6",
+   "wall_len_a": 2.0593,
+   "wall_len_b": 3.1657,
+   "diff_cm": 110.64,
+   "face_offset_cm": 27.56,
+   "pass": false,
+   "note": ""
+  },
+  {
+   "room": "room6",
+   "wall_len_a": 1.5983,
+   "wall_len_b": null,
+   "diff_cm": null,
+   "face_offset_cm": null,
+   "pass": false,
+   "note": "no matching wall in B"
+  },
+  {
+   "room": "room6",
+   "wall_len_a": 2.0593,
+   "wall_len_b": 3.1657,
+   "diff_cm": 110.64,
+   "face_offset_cm": 16.46,
+   "pass": false,
+   "note": ""
+  },
+  {
+   "room": "room7",
+   "wall_len_a": 1.7053,
+   "wall_len_b": 1.7093,
+   "diff_cm": 0.41,
+   "face_offset_cm": 2.92,
+   "pass": true,
+   "note": ""
+  },
+  {
+   "room": "room7",
+   "wall_len_a": 3.1454,
+   "wall_len_b": 3.1657,
+   "diff_cm": 2.03,
+   "face_offset_cm": 4.96,
+   "pass": false,
+   "note": ""
+  },
+  {
+   "room": "room7",
+   "wall_len_a": 1.7053,
+   "wall_len_b": 1.7093,
+   "diff_cm": 0.41,
+   "face_offset_cm": 4.93,
+   "pass": true,
+   "note": ""
+  },
+  {
+   "room": "room7",
+   "wall_len_a": 3.1454,
+   "wall_len_b": 3.1657,
+   "diff_cm": 2.03,
+   "face_offset_cm": 5.36,
+   "pass": false,
+   "note": ""
+  },
+  {
+   "room": "room9",
+   "wall_len_a": 1.3613,
+   "wall_len_b": 1.5175,
+   "diff_cm": 15.62,
+   "face_offset_cm": 0.85,
+   "pass": false,
+   "note": ""
+  },
+  {
+   "room": "room9",
+   "wall_len_a": 1.7714,
+   "wall_len_b": 1.6646,
+   "diff_cm": 10.68,
+   "face_offset_cm": 8.75,
+   "pass": false,
+   "note": ""
+  },
+  {
+   "room": "room9",
+   "wall_len_a": 1.3613,
+   "wall_len_b": 1.5175,
+   "diff_cm": 15.62,
+   "face_offset_cm": 11.53,
+   "pass": false,
+   "note": ""
+  },
+  {
+   "room": "room9",
+   "wall_len_a": 1.7714,
+   "wall_len_b": 1.6646,
+   "diff_cm": 10.68,
+   "face_offset_cm": 6.86,
+   "pass": false,
+   "note": ""
+  }
+ ],
+ "walls_pass": 4,
+ "walls_total": 24
+}

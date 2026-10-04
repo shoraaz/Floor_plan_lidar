@@ -23,11 +23,15 @@ xa, za = c * xyz[:, 0] - s * xyz[:, 2], s * xyz[:, 0] + c * xyz[:, 2]      # sam
 polys = {r["room_id"]: Polygon([w["start"] for w in r["walls"]]) for r in plan["rooms"]}
 vid = cv2.VideoCapture(str(cap / "rgb.mp4"))
 n = int(vid.get(cv2.CAP_PROP_FRAME_COUNT))
+# odometry row -> video frame: 1:1 for Stray (same rate); rescaled for low-rate poses (converted ARKitScenes, 10 Hz)
+ts = odo["timestamp"].to_numpy(); rate = (len(ts) - 1) / max(ts[-1] - ts[0], 1e-6); vfps = vid.get(cv2.CAP_PROP_FPS) or rate
+to_vid = (lambda i: int(round(i * vfps / rate))) if rate < 30 else (lambda i: i)
 manifest = {}
 for rid, poly in polys.items():
     if poly.area < 2.0:          # skip slivers/closets for the photo set
         continue
-    inside = [i for i in range(0, min(n, len(xyz)), 5) if poly.contains(Point(xa[i], za[i]))]
+    step = 5 if rate >= 30 else 1
+    inside = [i for i in range(0, len(xyz), step) if to_vid(i) < n and poly.contains(Point(xa[i], za[i]))]
     if len(inside) < per_room:
         continue
     # spread picks over the time spent in the room; within each slot keep the sharpest frame
@@ -37,7 +41,7 @@ for rid, poly in polys.items():
     for slot in slots:
         best, best_sharp = None, -1
         for i in slot[:: max(1, len(slot) // 6)]:
-            vid.set(cv2.CAP_PROP_POS_FRAMES, int(i)); ok, bgr = vid.read()
+            vid.set(cv2.CAP_PROP_POS_FRAMES, to_vid(int(i))); ok, bgr = vid.read()
             if not ok:
                 continue
             sharp = cv2.Laplacian(cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY), cv2.CV_64F).var()

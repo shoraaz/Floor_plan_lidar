@@ -1,0 +1,86 @@
+{
+ "registration": {
+  "coarse_overlap": 0.8615441918373108,
+  "coarse_rot_deg": 0,
+  "icp_fitness": 0.8560516004050543,
+  "icp_rmse_m": 0.0071054599056212765,
+  "residual_rot_deg": 0.0020502567159113028
+ },
+ "rooms": [
+  {
+   "room_a": "room1",
+   "room_b": "room1",
+   "iou": 0.758,
+   "area_a": 31.048,
+   "area_b": 34.021
+  },
+  {
+   "room_a": "room2",
+   "room_b": "room2",
+   "iou": 0.27,
+   "area_a": 2.462,
+   "area_b": 4.408
+  },
+  {
+   "room_a": "room3",
+   "room_b": "room2",
+   "iou": 0.306,
+   "area_a": 2.772,
+   "area_b": 4.408
+  },
+  {
+   "room_a": "room4",
+   "room_b": "room3",
+   "iou": 0.485,
+   "area_a": 4.069,
+   "area_b": 2.011
+  },
+  {
+   "room_a": "room5",
+   "room_b": "room1",
+   "iou": 0.059,
+   "area_a": 2.212,
+   "area_b": 34.021
+  }
+ ],
+ "walls": [
+  {
+   "room": "room1",
+   "wall_len_a": 6.0909,
+   "wall_len_b": 7.356,
+   "diff_cm": 126.51,
+   "face_offset_cm": 1.83,
+   "pass": false,
+   "note": ""
+  },
+  {
+   "room": "room1",
+   "wall_len_a": 5.0974,
+   "wall_len_b": 4.625,
+   "diff_cm": 47.25,
+   "face_offset_cm": 12.33,
+   "pass": false,
+   "note": ""
+  },
+  {
+   "room": "room1",
+   "wall_len_a": 6.0909,
+   "wall_len_b": null,
+   "diff_cm": null,
+   "face_offset_cm": null,
+   "pass": false,
+   "note": "no matching wall in B"
+  },
+  {
+   "room": "room1",
+   "wall_len_a": 5.0974,
+   "wall_len_b": null,
+   "diff_cm": null,
+   "face_offset_cm": null,
+   "pass": false,
+   "note": "no matching wall in B"
+  }
+ ],
+ "walls_pass": 0,
+ "walls_total": 4
+}

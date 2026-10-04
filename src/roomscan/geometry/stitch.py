@@ -23,6 +23,10 @@ def finalize(plan: PropertyPlan, overlap_tol_m2: float = 0.05) -> PropertyPlan:
             inter = polys[ids[i]].intersection(polys[ids[j]]).area
             if inter > overlap_tol_m2:
                 plan.warnings.append(f"overlap {ids[i]}/{ids[j]}: {inter:.2f} m2")
+    if not polys:
+        plan.footprint_m2 = Interval(0.0, 0.0, 0.0, unit="m2")
+        plan.warnings.append("NO ROOMS RECOVERED from this capture: plan is empty (never a guessed layout)")
+        plan.input_quality["reliable"] = False
     if polys:
         fp = unary_union(list(polys.values())).area
         # footprint interval: combine per-room area half-widths (conservative linear sum)

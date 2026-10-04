@@ -133,9 +133,10 @@ def ceiling_spread(plans: list[dict]):
 
 
 def report(cap_a: Path, cap_b: Path, plan_a_path: Path, plan_b_path: Path, out: Path):
-    A, B = aligned_band(cap_a), aligned_band(cap_b)
-    M, diag = register(A, B)
     pa, pb = json.loads(plan_a_path.read_text()), json.loads(plan_b_path.read_text())
+    da = pa["input_quality"].get("drift_correction", False); db = pb["input_quality"].get("drift_correction", False)
+    A, B = aligned_band(cap_a, drift=da), aligned_band(cap_b, drift=db)   # same poses the plans were built from
+    M, diag = register(A, B)
     room_rows, rows = compare(pa, pb, M)
     n = len(rows); npass = sum(r["pass"] for r in rows)
     fa, fb = pa["footprint_m2"]["value"], pb["footprint_m2"]["value"]
