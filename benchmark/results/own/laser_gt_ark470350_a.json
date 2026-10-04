@@ -6,19 +6,22 @@
    "188545.ply"
   ],
   "registration": {
-   "coarse_overlap": 0.7283316850662231,
+   "coarse_overlap": 0.7310283780097961,
    "coarse_rot_deg": 90,
-   "icp_fitness": 0.6620739232013418,
-   "icp_rmse_m": 0.008575156733695244,
-   "residual_rot_deg": 0.6807573500129678
+   "icp_fitness": 0.6625531659977236,
+   "icp_rmse_m": 0.008539485562613795,
+   "residual_rot_deg": 0.6792822222199817
   },
   "walls_scored": 12,
   "walls_total": 20,
-  "median_abs_err_cm": 20.7,
+  "median_abs_err_cm": 19.38,
   "within_1cm": 0,
   "within_2cm": 0,
-  "within_5cm": 0,
-  "within_1pct": 0,
+  "within_5cm": 2,
+  "within_1pct": 2,
+  "clean_walls": 4,
+  "clean_median_abs_err_cm": 5.21,
+  "clean_within_2cm": 0,
   "interval_coverage": 1.0,
   "laser_ceiling_global_m": 2.3065
  },
@@ -27,37 +30,41 @@
    "room": "room1",
    "wall": 0,
    "ours_m": 6.0909,
-   "gt_m": 5.8373,
-   "err_cm": 25.36,
-   "err_pct": 4.34,
-   "covered": true
+   "gt_m": 5.8349,
+   "err_cm": 25.6,
+   "err_pct": 4.39,
+   "covered": true,
+   "clean_gt": false
   },
   {
    "room": "room1",
    "wall": 1,
    "ours_m": 5.0974,
-   "gt_m": 5.1759,
-   "err_cm": -7.85,
-   "err_pct": -1.52,
-   "covered": true
+   "gt_m": 5.1773,
+   "err_cm": -7.99,
+   "err_pct": -1.54,
+   "covered": true,
+   "clean_gt": true
   },
   {
    "room": "room1",
    "wall": 2,
    "ours_m": 6.0909,
-   "gt_m": 5.8373,
-   "err_cm": 25.36,
-   "err_pct": 4.34,
-   "covered": true
+   "gt_m": 5.8349,
+   "err_cm": 25.6,
+   "err_pct": 4.39,
+   "covered": true,
+   "clean_gt": false
   },
   {
    "room": "room1",
    "wall": 3,
    "ours_m": 5.0974,
-   "gt_m": 5.1759,
-   "err_cm": -7.85,
-   "err_pct": -1.52,
-   "covered": true
+   "gt_m": 5.1773,
+   "err_cm": -7.99,
+   "err_pct": -1.54,
+   "covered": true,
+   "clean_gt": true
   },
   {
    "room": "room2",
@@ -69,10 +76,11 @@
    "room": "room2",
    "wall": 1,
    "ours_m": 0.741,
-   "gt_m": 0.5361,
-   "err_cm": 20.49,
-   "err_pct": 38.22,
-   "covered": true
+   "gt_m": 0.5631,
+   "err_cm": 17.79,
+   "err_pct": 31.59,
+   "covered": true,
+   "clean_gt": false
   },
   {
    "room": "room2",
@@ -84,10 +92,11 @@
    "room": "room2",
    "wall": 3,
    "ours_m": 0.741,
-   "gt_m": 0.5361,
-   "err_cm": 20.49,
-   "err_pct": 38.22,
-   "covered": true
+   "gt_m": 0.5631,
+   "err_cm": 17.79,
+   "err_pct": 31.59,
+   "covered": true,
+   "clean_gt": false
   },
   {
    "room": "room3",
@@ -117,10 +126,11 @@
    "room": "room4",
    "wall": 0,
    "ours_m": 3.3758,
-   "gt_m": 3.2478,
-   "err_cm": 12.8,
-   "err_pct": 3.94,
-   "covered": true
+   "gt_m": 3.4001,
+   "err_cm": -2.43,
+   "err_pct": -0.72,
+   "covered": true,
+   "clean_gt": true
   },
   {
    "room": "room4",
@@ -132,10 +142,11 @@
    "room": "room4",
    "wall": 2,
    "ours_m": 3.3758,
-   "gt_m": 3.2478,
-   "err_cm": 12.8,
-   "err_pct": 3.94,
-   "covered": true
+   "gt_m": 3.4001,
+   "err_cm": -2.43,
+   "err_pct": -0.72,
+   "covered": true,
+   "clean_gt": true
   },
   {
    "room": "room4",
@@ -147,55 +158,59 @@
    "room": "room5",
    "wall": 0,
    "ours_m": 1.1962,
-   "gt_m": 0.7442,
-   "err_cm": 45.2,
-   "err_pct": 60.73,
-   "covered": true
+   "gt_m": 0.7397,
+   "err_cm": 45.65,
+   "err_pct": 61.71,
+   "covered": true,
+   "clean_gt": false
   },
   {
    "room": "room5",
    "wall": 1,
    "ours_m": 1.8494,
-   "gt_m": 1.6403,
-   "err_cm": 20.92,
-   "err_pct": 12.75,
-   "covered": true
+   "gt_m": 1.6399,
+   "err_cm": 20.96,
+   "err_pct": 12.78,
+   "covered": true,
+   "clean_gt": false
   },
   {
    "room": "room5",
    "wall": 2,
    "ours_m": 1.1962,
-   "gt_m": 0.7442,
-   "err_cm": 45.2,
-   "err_pct": 60.73,
-   "covered": true
+   "gt_m": 0.7397,
+   "err_cm": 45.65,
+   "err_pct": 61.71,
+   "covered": true,
+   "clean_gt": false
   },
   {
    "room": "room5",
    "wall": 3,
    "ours_m": 1.8494,
-   "gt_m": 1.6403,
-   "err_cm": 20.92,
-   "err_pct": 12.75,
-   "covered": true
+   "gt_m": 1.6399,
+   "err_cm": 20.96,
+   "err_pct": 12.78,
+   "covered": true,
+   "clean_gt": false
   }
  ],
  "ceilings": [
   {
    "room": "room1",
-   "gt_m": 2.3083,
+   "gt_m": 2.3086,
    "ours_m": null,
    "err_cm": null
   },
   {
    "room": "room2",
-   "gt_m": 2.3106,
+   "gt_m": 2.3108,
    "ours_m": null,
    "err_cm": null
   },
   {
    "room": "room4",
-   "gt_m": 2.266,
+   "gt_m": 2.2677,
    "ours_m": null,
    "err_cm": null
   }
@@ -216,8 +231,8 @@
   {
    "room": "room2",
    "ours_m": 1.02,
-   "gt_m": 1.135,
-   "err_cm": -11.5
+   "gt_m": 1.14,
+   "err_cm": -12.0
   },
   {
    "room": "room3",
@@ -228,8 +243,8 @@
   {
    "room": "room4",
    "ours_m": 1.3,
-   "gt_m": 0.915,
-   "err_cm": 38.5
+   "gt_m": 0.92,
+   "err_cm": 38.0
   },
   {
    "room": "room4",

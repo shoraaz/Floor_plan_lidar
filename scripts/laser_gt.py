@@ -21,15 +21,23 @@ from roomscan.geometry.openings import refine_width
 from roomscan.bench.repeat import register, _apply
 from shapely.geometry import Polygon, Point
 
-cap, plan_p, lasers = Path(sys.argv[1]), Path(sys.argv[2]), [Path(p) for p in sys.argv[3:]]
+cap, plan_p, lasers = Path(sys.argv[1]), Path(sys.argv[2]), [Path(p) for p in sys.argv[3:] if not p.startswith("--")]
 plan = json.loads(plan_p.read_text())
 
 # ---- laser cloud: load, voxelise, put gravity on +y, Manhattan-align -------------------------------------
-pts = []
-for lp in lasers:
-    pc = o3d.io.read_point_cloud(str(lp)).voxel_down_sample(0.01)
-    pts.append(np.asarray(pc.points))
-L = np.concatenate(pts)
+import hashlib
+_key = hashlib.sha1("|".join(str(p.resolve()) for p in lasers).encode()).hexdigest()[:12]
+_cache = Path("cache") / f"laser_{_key}.npz"
+if _cache.exists():
+    L = np.load(_cache)["L"]
+else:
+    pts = []
+    for lp in lasers:
+        pc = o3d.io.read_point_cloud(str(lp)).voxel_down_sample(0.01)
+        pts.append(np.asarray(pc.points))
+    L = np.concatenate(pts)
+    Path("cache").mkdir(exist_ok=True); np.savez(_cache, L=L.astype(np.float32))
+L = L.astype(np.float64)
 def sharp(a):
     h, _ = np.histogram(L[:, a], bins=np.arange(L[:, a].min(), L[:, a].max() + 0.02, 0.02)); return np.sort(h)[-1] / len(L)
 up = int(np.argmax([sharp(a) for a in range(3)]))
@@ -66,7 +74,7 @@ def laser_face(p, q, centre, win=0.25, bin_m=0.005):
     lo, hi = sorted([p[0], q[0]] if horiz else [p[1], q[1]]); sh = 0.15 * (hi - lo)
     sel = Lhigh[(Lhigh[:, ax_r] > lo + sh) & (Lhigh[:, ax_r] < hi - sh) & (np.abs(Lhigh[:, ax_f] - fixed) < win)]
     if len(sel) < 30:
-        return None
+        return None, False
     v = sel[:, ax_f]; e = np.arange(fixed - win, fixed + win + bin_m, bin_m)
     h, _ = np.histogram(v, bins=e)
     from scipy.ndimage import gaussian_filter1d
@@ -74,12 +82,18 @@ def laser_face(p, q, centre, win=0.25, bin_m=0.005):
     h = gaussian_filter1d(h.astype(float), 1.0)
     pk, _ = find_peaks(h, height=0.4 * h.max(), distance=4)
     if not len(pk):
-        return None
+        return None, False
     c = (e[pk] + e[pk + 1]) / 2
+    if "--peaks" in sys.argv:
+        allpk, _ = find_peaks(h, height=0.1 * h.max(), distance=4)
+        print("PEAKS near", round(fixed, 3), ":", [(round(float((e[k] + e[k + 1]) / 2), 3), round(float(h[k] / h.max()), 2)) for k in allpk])
     room_side = centre[1] if horiz else centre[0]
     f = c.max() if room_side > fixed else c.min()
     near = v[np.abs(v - f) < 0.02]
-    return float(np.median(near)) if len(near) > 10 else float(f)
+    wide = int((h >= 0.5 * h.max()).sum()) * bin_m
+    rivals = [k for k in find_peaks(h, height=0.5 * h.max(), distance=4)[0] if abs((e[k] + e[k + 1]) / 2 - f) > 0.04]
+    clean = wide <= 0.05 and not rivals
+    return (float(np.median(near)) if len(near) > 10 else float(f)), clean
 
 
 rows, ceil_rows, door_rows = [], [], []
@@ -88,7 +102,8 @@ for r in plan["rooms"]:
         continue
     corners = _apply(M, [w["start"] for w in r["walls"]])
     centre = corners.mean(0)
-    faces = [laser_face(corners[i], corners[(i + 1) % 4], centre) for i in range(4)]
+    fc = [laser_face(corners[i], corners[(i + 1) % 4], centre) for i in range(4)]
+    faces = [x[0] for x in fc]; cleans = [x[1] for x in fc]
     for i in range(4):
         p, q = corners[i], corners[(i + 1) % 4]; horiz = abs(q[1] - p[1]) < abs(q[0] - p[0])
         ours_pos = (p[1] + q[1]) / 2 if horiz else (p[0] + q[0]) / 2
@@ -104,7 +119,8 @@ for r in plan["rooms"]:
         gt = abs(a - b)
         rows.append({"room": r["room_id"], "wall": i, "ours_m": round(ours["value"], 4), "gt_m": round(gt, 4),
                      "err_cm": round((ours["value"] - gt) * 100, 2), "err_pct": round((ours["value"] - gt) / gt * 100, 2),
-                     "covered": bool(ours["lo"] <= gt <= ours["hi"])})
+                     "covered": bool(ours["lo"] <= gt <= ours["hi"]),
+                     "clean_gt": bool(cleans[(i - 1) % 4] and cleans[(i + 1) % 4])})
     if Lceil is not None:
         poly = Polygon(corners)
         inside = np.array([poly.contains(Point(x, z)) for x, z in Lceil[::50, [0, 2]]])
@@ -131,6 +147,9 @@ summary = {"capture": plan["capture_id"], "laser_scans": [p.name for p in lasers
            "walls_scored": len(ok), "walls_total": len(rows), "median_abs_err_cm": round(float(np.nanmedian(e)), 2),
            "within_1cm": int((e <= 1).sum()), "within_2cm": int((e <= 2).sum()), "within_5cm": int((e <= 5).sum()),
            "within_1pct": int(sum(abs(x["err_pct"]) <= 1 for x in ok)),
+           "clean_walls": len([x for x in ok if x.get("clean_gt")]),
+           "clean_median_abs_err_cm": round(float(np.median([abs(x["err_cm"]) for x in ok if x.get("clean_gt")])), 2) if any(x.get("clean_gt") for x in ok) else None,
+           "clean_within_2cm": int(sum(abs(x["err_cm"]) <= 2 for x in ok if x.get("clean_gt"))),
            "interval_coverage": round(float(np.mean([x["covered"] for x in ok])), 2) if ok else None,
            "laser_ceiling_global_m": None if hp.ceiling_height is None else round(hp.ceiling_height, 4)}
 out = Path("benchmark/results/own"); out.mkdir(parents=True, exist_ok=True)
@@ -142,7 +161,7 @@ for x in ceil_rows: print("ceiling", x)
 for x in door_rows: print("door", x)
 
 
-if "--plot" in sys.argv or True:
+if "--plot" in sys.argv:
     import matplotlib; matplotlib.use("Agg"); import matplotlib.pyplot as plt
     fig, ax = plt.subplots(figsize=(12, 12))
     ax.scatter(Lband[::15, 0], Lband[::15, 2], s=0.2, c="0.6", label="laser wall band")

@@ -6,20 +6,23 @@
    "188545.ply"
   ],
   "registration": {
-   "coarse_overlap": 0.8248896598815918,
+   "coarse_overlap": 0.8281915187835693,
    "coarse_rot_deg": 270,
-   "icp_fitness": 0.6510643657891422,
-   "icp_rmse_m": 0.007092192289903659,
-   "residual_rot_deg": 0.12608424860167133
+   "icp_fitness": 0.6522987781836503,
+   "icp_rmse_m": 0.0070932993842395195,
+   "residual_rot_deg": 0.1257429075594132
   },
   "walls_scored": 4,
   "walls_total": 8,
-  "median_abs_err_cm": 44.42,
+  "median_abs_err_cm": 44.44,
   "within_1cm": 0,
   "within_2cm": 0,
   "within_5cm": 0,
   "within_1pct": 0,
-  "interval_coverage": 0.5,
+  "clean_walls": 0,
+  "clean_median_abs_err_cm": null,
+  "clean_within_2cm": 0,
+  "interval_coverage": 1.0,
   "laser_ceiling_global_m": 2.3065
  },
  "walls": [
@@ -51,43 +54,47 @@
    "room": "room3",
    "wall": 0,
    "ours_m": 1.9262,
-   "gt_m": 1.4617,
-   "err_cm": 46.45,
-   "err_pct": 31.78,
-   "covered": false
+   "gt_m": 1.4655,
+   "err_cm": 46.08,
+   "err_pct": 31.44,
+   "covered": true,
+   "clean_gt": false
   },
   {
    "room": "room3",
    "wall": 1,
    "ours_m": 0.4434,
-   "gt_m": 0.0194,
-   "err_cm": 42.4,
-   "err_pct": 2186.47,
-   "covered": true
+   "gt_m": 0.0155,
+   "err_cm": 42.79,
+   "err_pct": 2758.02,
+   "covered": true,
+   "clean_gt": false
   },
   {
    "room": "room3",
    "wall": 2,
    "ours_m": 1.9262,
-   "gt_m": 1.4617,
-   "err_cm": 46.45,
-   "err_pct": 31.78,
-   "covered": false
+   "gt_m": 1.4655,
+   "err_cm": 46.08,
+   "err_pct": 31.44,
+   "covered": true,
+   "clean_gt": false
   },
   {
    "room": "room3",
    "wall": 3,
    "ours_m": 0.4434,
-   "gt_m": 0.0194,
-   "err_cm": 42.4,
-   "err_pct": 2186.47,
-   "covered": true
+   "gt_m": 0.0155,
+   "err_cm": 42.79,
+   "err_pct": 2758.02,
+   "covered": true,
+   "clean_gt": false
   }
  ],
  "ceilings": [
   {
    "room": "room2",
-   "gt_m": 2.2651,
+   "gt_m": 2.2672,
    "ours_m": null,
    "err_cm": null
   }

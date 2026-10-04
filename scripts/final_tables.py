@@ -20,6 +20,7 @@ for p in sorted((R / "own").glob("laser_gt_ark*.json")):
     gt[p.stem.replace("laser_gt_", "")] = json.loads(p.read_text())
 walls = [w for g in gt.values() for w in g["walls"] if w.get("gt_m")]
 werr = np.array([abs(w["err_cm"]) for w in walls]) if walls else np.array([])
+cerr = np.array([abs(w["err_cm"]) for w in walls if w.get("clean_gt")])
 doors = [d for g in gt.values() for d in g["doors"] if d.get("gt_m")]
 derr = np.array([abs(d["err_cm"]) for d in doors]) if doors else np.array([])
 ceils = [c for g in gt.values() for c in g["ceilings"]]
@@ -39,7 +40,9 @@ def drift_row():
 
 gates = [
     ("Wall lengths (LiDAR) vs laser", "<= 1 cm or 0.5% (repeat gate used as accuracy proxy)",
-     f"{len(walls)} walls scored; median |err| {np.median(werr):.1f} cm; within 2 cm: {int((werr <= 2).sum())}" if len(werr) else "not scored", "FAIL"),
+     (f"{len(walls)} walls scored; median |err| {np.median(werr):.1f} cm; within 2 cm: {int((werr <= 2).sum())}. "
+      f"Clean-GT subset (one sharp laser surface on both bounding walls): {len(cerr)} walls, median {np.median(cerr):.1f} cm, within 2 cm: {int((cerr <= 2).sum())}")
+     if len(werr) and len(cerr) else (f"{len(walls)} walls scored; median |err| {np.median(werr):.1f} cm" if len(werr) else "not scored"), "FAIL"),
     ("Opening widths", "<= 2 cm on >= 85%, missed/phantom = miss",
      f"{len(doors)} doors scored; median |err| {np.median(derr):.1f} cm; within 2 cm: {int((derr <= 2).sum())}/{len(doors)}" if len(derr) else "no door scorable", "FAIL"),
     ("Ceiling height", "<= 1.5 cm; spread <= 1 cm",

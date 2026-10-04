@@ -48,7 +48,7 @@ Design decisions I would defend live:
 
 | Tier | Input | Runs on (processing) | Honest accuracy on our data |
 |---|---|---|---|
-| LiDAR | Stray Scanner export (iPhone/iPad Pro) | CPU; 18-32 s per capture | metric cloud (0.8% scale vs laser); room walls median 20.5 cm vs laser |
+| LiDAR | Stray Scanner export (iPhone/iPad Pro) | CPU; 18-32 s per capture | metric cloud (0.8% scale vs laser); walls median 5.0 cm where GT is unambiguous, 17.8 cm over all |
 | Video | any clip (iPhone 15+) | CUDA GPU, 8 GB; 6 min cold for 90 s of video | footprint -3% to -90%; trajectory error ~5% of path |
 | Photo | 2-8 stills per room folder | CUDA GPU; 30-130 s | collapses to 0-1 rooms; flagged UNRELIABLE |
 
@@ -58,7 +58,7 @@ Design decisions I would defend live:
 
 | Gate | Target | Measured | Status |
 |---|---|---|---|
-| Walls (LiDAR) vs laser | 1 cm / 0.5% | 22 walls: median 20.5 cm; 2 within 2 cm; best capture (c) median 5.1 cm | FAIL |
+| Walls (LiDAR) vs laser | 1 cm / 0.5% | all 22 walls: median 17.8 cm, 2 within 2 cm; **6 clean-GT walls: median 5.0 cm**, 0 within 2 cm | FAIL |
 | Opening widths | <= 2 cm on >= 85% | 7 doors scored: median 11.5 cm; 0 within 2 cm | FAIL |
 | Ceiling height | <= 1.5 cm | laser 2.27-2.31 m; iPad sweeps rarely saw the ceiling -> withheld in most rooms | NOT SCORED |
 | Repeatability | 1 cm / 0.5% per wall | own a/b 0/8, a/c 0/4, sample 4/24; raw surfaces agree to 0.69-0.95 cm | FAIL |
@@ -73,8 +73,14 @@ metrically right: similarity ICP onto the laser scan gives scale 1.008 and 1.9 c
 surface a room side snaps to. Per-side comparison against laser wall faces (measured above furniture height):
 several sides land within 1 cm (-0.6, -0.7, -0.9, -1.2 cm), many land **18-24 cm outside, i.e. on the far face of
 the wall**. A fix for one cause (rectilinear outlines including the wall thickness) moved room1's worst sides from
-+23.8/+22.7 cm to -6.7/+2.2 cm; the remaining far-face picks are the main open problem. The scorer itself is
-limited to rectangular rooms and mis-measured one tiny room on capture b.
++23.8/+22.7 cm to -6.7/+2.2 cm. Listing every laser surface near each side (laser_gt.py --peaks) separates the
+remaining ~20 cm cases into two kinds: (a) **our side sits where the laser has no surface at all**, i.e. a virtual
+wall created by doorway closure or wall extension, which snapping cannot fix; (b) **the laser shows a 25-50 cm
+band of clutter, not a plane**, so the ground-truth face is itself ill-defined. The scorer therefore reports a
+clean-GT subset (one sharp laser surface, <= 5 cm wide with no rival, on both bounding walls): **median 5.0 cm
+over 6 walls**, against 17.8 cm over all 22. I tried choosing the room-side face from ray-cast free space (rays stop at
+the inner face); it made capture a worse (median 20.9 -> 25.9 cm, because it also moved room splits) and was not
+shipped (scripts/diagnostics/gt_quick.ps1 reproduces both). The scorer handles rectangular rooms only.
 
 **Repeatability.** Raw wall surfaces of two captures agree to 0.69 cm (own) and 0.95 cm (sample) after
 registration; footprints to 1.4% (own a/b). Per-wall agreement fails because the same space is partitioned or
@@ -125,7 +131,8 @@ later confirms the snapping half: wrong-face picks of ~20 cm. Full post-mortem: 
 | Sensor + poses (cloud vs laser) | 0.8% scale, 1.9 cm RMSE | `scale_check.py` |
 | Raw surface repeatability | 0.69-0.95 cm | repeatability registrations |
 | Orientation between captures | 0.22 deg after refinement | registration residual |
-| Room-side face selection | 0-24 cm per side (bimodal: ~1 cm or ~20 cm) | per-side laser comparison |
+| Room-side face selection, physical walls | ~5 cm median (clean-GT walls) | laser_gt.py, clean subset |
+| Virtual walls (doorway closure / extension) | ~20 cm where they occur | laser_gt.py --peaks |
 | Partition differences between captures | 15-140 cm when they occur | `fixloop/after/overlay_A_blue_B_red.png` |
 
 Intervals are fitted from measured errors (`scripts/fit_calibration.py`): LiDAR half-width = max(4.3% x length,

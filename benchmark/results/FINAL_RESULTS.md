@@ -9,22 +9,22 @@ available. Regenerate: `reproduction/get_arkitscenes.ps1`, `reproduction/run_fin
 
 | gate | target | measured | status |
 |---|---|---|---|
-| Wall lengths (LiDAR) vs laser | <= 1 cm or 0.5% (repeat gate used as accuracy proxy) | 22 walls scored; median |err| 20.5 cm; within 2 cm: 2 | FAIL |
-| Opening widths | <= 2 cm on >= 85%, missed/phantom = miss | 7 doors scored; median |err| 11.5 cm; within 2 cm: 0/7 | FAIL |
-| Ceiling height | <= 1.5 cm; spread <= 1 cm | laser GT 2.308, 2.311, 2.266, 2.265 m; ours reported in 2 rooms (ceiling not observed by the iPad sweeps -> withheld) | NOT SCORED |
+| Wall lengths (LiDAR) vs laser | <= 1 cm or 0.5% (repeat gate used as accuracy proxy) | 22 walls scored; median |err| 17.8 cm; within 2 cm: 2. Clean-GT subset (one sharp laser surface on both bounding walls): 6 walls, median 5.0 cm, within 2 cm: 0 | FAIL |
+| Opening widths | <= 2 cm on >= 85%, missed/phantom = miss | 7 doors scored; median |err| 12.0 cm; within 2 cm: 0/7 | FAIL |
+| Ceiling height | <= 1.5 cm; spread <= 1 cm | laser GT 2.309, 2.311, 2.268, 2.267 m; ours reported in 2 rooms (ceiling not observed by the iPad sweeps -> withheld) | NOT SCORED |
 | Repeatability (LiDAR) | <= 1 cm or 0.5% per wall | own a/b 0/8, own a/c 0/4, sample 4/24 | FAIL |
 | Drift accountability | method + on/off footprint ablation | pose graph + ICP-verified revisit loops, ON by default; ablation in `drift_ablation_*.log` (no measured benefit on sample data) | PARTIAL |
 | Photo-tier whole-property stitch | one stitched plan, correct adjacency, footprint +/-8% | see tier table: collapses / flagged UNRELIABLE | FAIL |
 | Video tier | walls +/-3% | see tier table | FAIL |
-| Calibration / no confident garbage | intervals honest at every tier | LiDAR interval coverage vs laser: 91% | PARTIAL |
+| Calibration / no confident garbage | intervals honest at every tier | LiDAR interval coverage vs laser: 100% | PARTIAL |
 
 ## Own benchmark: LiDAR tier vs Faro laser ground truth
 
 | capture | walls scored | median abs err (cm) | within 2 cm | within 5 cm | doors scored |
 |---|---|---|---|---|---|
-| ark470350_a | 12/20 | 20.7 | 0 | 0 | 4 |
-| ark470350_b | 4/8 | 44.42 | 0 | 0 | 0 |
-| ark470350_c | 6/12 | 5.09 | 2 | 2 | 3 |
+| ark470350_a | 12/20 | 19.38 | 0 | 2 | 4 |
+| ark470350_b | 4/8 | 44.44 | 0 | 0 | 0 |
+| ark470350_c | 6/12 | 4.98 | 2 | 4 | 3 |
 
 ## Tier agreement vs LiDAR plan (same capture)
 
