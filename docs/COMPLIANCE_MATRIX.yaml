@@ -1,8 +1,7 @@
 # Compliance matrix: requirement -> file path -> artifact -> status
 # status: done | partial | not_done   (honest; numbers live in benchmark/results and the report)
-# Scope note: the organisers instructed us to run on their sample data (3 Stray Scanner captures) and not
-# capture our own; no tape/laser ground truth was supplied. Accuracy = cross-tier agreement vs LiDAR +
-# capture-to-capture repeatability.
+# Scope: organisers' sample data (3 Stray captures, no GT) + own benchmark from Apple ARKitScenes venue 470350
+# (3 iPad-LiDAR captures, Faro laser ground truth, converted to Stray format). Substitution: no own device/room.
 requirements:
   - id: R-CAP
     text: Capture route + device matrix
@@ -58,7 +57,7 @@ requirements:
     text: Interval on every measurement
     path: src/roomscan/calibration.py, geometry/backend.py
     artifact: every length/area/height in plan.json is an interval
-    status: partial   # intervals widen with tier/support/scale disagreement; not yet conformal-fitted
+    status: partial   # fitted from measured errors (LiDAR vs laser 91%, in-sample); see REPORT sec. 7
   - id: R-OUT-CMD
     text: One command per capture
     path: src/roomscan/cli.py
@@ -87,13 +86,13 @@ requirements:
   - id: R-GATE-ACCURACY
     text: Opening/ceiling/wall accuracy vs ground truth
     path: n/a
-    artifact: n/a
-    status: not_done  # no ground truth supplied with sample data
+    artifact: benchmark/results/own/laser_gt_*.json, benchmark/results/FINAL_RESULTS.md
+    status: done (measured; gates FAIL: walls median 20.5 cm, doors median 11.5 cm)
   - id: R-H2H
     text: Head-to-head vs consumer app
     path: n/a
     artifact: n/a
-    status: not_done  # no app export for the sample spaces
+    status: not_done  # no LiDAR device available to run a consumer app on any benchmark room
   - id: R-FIX
     text: Fix declaration, shipped fix, regenerable before/after, diff
     path: fixloop/
@@ -112,10 +111,16 @@ requirements:
   - id: R-REPORT
     text: Technical report <= 6 pages
     path: docs/REPORT.md
-    artifact: report
-    status: not_done
+    artifact: docs/REPORT.md (~5-6 pages)
+    status: done
   - id: R-PROC
     text: Incremental commit history
     path: .git
     artifact: git log (20+ commits, tags fixloop-before/after)
     status: done
+
+  - id: R-OWN-BENCH
+    text: Own benchmark with ground truth (multi-room, damaged room, all tiers, repeat capture)
+    path: reproduction/get_arkitscenes.ps1, scripts/arkitscenes_to_stray.py, scripts/laser_gt.py
+    artifact: own_benchmark/ (converted), benchmark/results/own/*
+    status: partial   # laser GT + 3 repeat captures + all tiers; no staged damage, no own capture, not a 3-room+connector layout

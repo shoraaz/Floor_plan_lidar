@@ -1,121 +1,144 @@
 # roomscan: technical report
 
-Applied AI Engineer case study. Repo: this repository; every number below is regenerable with
-`reproduction/run_all.ps1`, `reproduction/fixloop.ps1` and the scripts named next to it.
+Applied AI Engineer case study. Every number here is regenerable: `reproduction/get_arkitscenes.ps1` (own
+benchmark data), `reproduction/run_final.ps1` (all tiers, all captures, scoring), `scripts/final_tables.py`
+(`benchmark/results/FINAL_RESULTS.md`), `reproduction/fixloop.ps1` (fix loop). Short version: the LiDAR tier is
+a complete, metrically sound pipeline that **does not yet meet the centimetre gates**; the video and photo tiers
+run end to end but are far from their gates and say so in their output. All gate results are in sec. 4.
 
-## 1. What was built
+## 1. Data and the one substitution
 
-One command per capture (`roomscan run <capture> --out <dir>`) turns a phone capture into a schema-validated
-`plan.json` and a rendered `plan.svg`. Three front ends feed one geometry backend, so every tier emits the same
-contract and differs only in the evidence behind it and in interval width.
+- **Sample data** (organisers): 3 Stray Scanner LiDAR captures, two of the same flat. No ground truth supplied.
+- **Own benchmark**: no LiDAR phone or room was available to me, so I used **Apple ARKitScenes** venue 470350
+  (CC BY-NC-SA 4.0): three iPad-LiDAR captures of the same space plus **Faro laser-scanner point clouds** as
+  ground truth. `scripts/arkitscenes_to_stray.py` converts each capture to the exact Stray export format, so the
+  unchanged `roomscan run` processes it (also a rehearsal of the walk-in format). Two conventions were verified
+  on data, not assumed: ARKitScenes trajectories are world-to-camera in a **z-up** world (camera height std
+  0.30 m along z; floor peak along z), rotated to the y-up frame Stray uses. Not covered by this substitution:
+  staged damage, a 3+-room-plus-connector layout, my own capture protocol, the consumer-app head-to-head.
+
+## 2. Architecture
 
 ```
-LiDAR  (Stray Scanner: depth, confidence, ARKit poses, K) --\
-Video  (RGB clip only: DA3 any-view poses + DA3 metric)    ----> metric y-up point cloud + camera path + rays
-Photo  (per-room folders: joint DA3 pass + DA3 metric)    --/                     |
-                                                                                  v
-  floor/ceiling planes -> Manhattan yaw (normals + 0.02 deg sharpness search) -> wall map (0.95-1.6 m band)
-  -> doorway closure -> wall extension through unobserved space -> rooms = wall-enclosed regions
-  -> rectangle-first snapping to the room-side wall face -> per-room ceiling -> intervals -> stitch checks
-  -> plan.json (schema-validated) + plan.svg
+LiDAR  (Stray: depth + confidence + ARKit poses + K)  -> pose-graph drift correction -> fuse
+Video  (RGB clip only)   -> DA3-LARGE-1.1 chunks, per-chunk metric scale (DA3METRIC) -> fuse
+Photo  (room folders)    -> one joint DA3 pass over all photos + metric scale         -> fuse
+        all three -> metric, y-up point cloud + camera path + ray endpoints
+shared backend: floor/ceiling planes -> Manhattan yaw (normals + 0.02 deg wall-sharpness search)
+  -> wall map in a 0.95-1.6 m band -> doorway closure -> wall extension through unobserved space
+  -> rooms = wall-enclosed regions -> each side snapped to the room-side wall face -> ceiling per room
+  -> doors (doorways joining two rooms; width from door-frame faces) -> intervals -> plausibility gate
+  -> stitch checks -> plan.json (schema-validated before writing) + plan.svg
 ```
 
-Design choices that matter at the defense:
+Design decisions I would defend live:
+- **One backend, three front ends.** Room logic exists once; tiers differ only in how a metric cloud is made and
+  in interval width. Cost: a weak front end cannot be rescued downstream (that is what happened to video/photo).
+- **Structure, not coverage, defines rooms.** Rooms are wall-enclosed regions, with walls extended through
+  unobserved space (ROSE2-style); using observed space made room extent depend on where the phone pointed.
+- **Wall band 0.95-1.6 m.** Above tables, beds and counters, and covered by any protocol-following walk. One
+  sample walk was aimed low (~5% of points above 1.6 m); a 1.1-2.0 m band broke its walls entirely.
+- **Never guess.** Ceiling is `null` when not observed; empty reconstructions produce a valid, empty, flagged plan;
+  non-LiDAR plans with an implausible floor-to-ceiling distance (outside 2.1-4.2 m) are marked UNRELIABLE.
+- **Verify conventions on data.** Stray poses are camera-to-world, OpenCV camera, ARKit y-up world (floor peak
+  1.4 m below the camera only under this reading). DA3 extrinsics are world-to-camera (5-17 cm ATE per chunk vs
+  21-26 cm the other way). DA3METRIC depth in metres = output x focal / 300 (LiDAR ratio 1.37-1.59 vs 1.40).
 
-- **One backend, three front ends.** Room logic is written and debugged once; tier differences are isolated to
-  how a metric cloud is produced. The cost: a weak front end (video/photo) cannot be rescued downstream.
-- **Structure, not coverage, defines rooms.** Rooms are regions enclosed by walls, with walls extended through
-  space the walk never saw (ROSE2-style). Earlier versions used observed free space, which made room extent
-  depend on where the phone happened to point (see fix loop).
-- **The wall band is chosen for robustness, not completeness.** 0.95-1.6 m: above beds/tables/counters, and
-  observed by any walk that follows the protocol. One sample walk was aimed low (~5% of points above 1.6 m);
-  a 1.1-2.0 m band broke its walls.
-- **Measure the room-side face.** Each room side is snapped to the wall face nearest the room interior (median
-  of face points, sub-cm), i.e. the surface a tape touches, not the wall centreline.
-- **Never guess.** Ceiling height is `null` when the ceiling was not observed; rooms not enclosed by detected
-  walls are flagged and their intervals widened.
+## 3. Tiers and device matrix
 
-## 2. Tiers and device matrix
+| Tier | Input | Runs on (processing) | Honest accuracy on our data |
+|---|---|---|---|
+| LiDAR | Stray Scanner export (iPhone/iPad Pro) | CPU; 18-32 s per capture | metric cloud (0.8% scale vs laser); room walls median 20.5 cm vs laser |
+| Video | any clip (iPhone 15+) | CUDA GPU, 8 GB; 6 min cold for 90 s of video | footprint -3% to -90%; trajectory error ~5% of path |
+| Photo | 2-8 stills per room folder | CUDA GPU; 30-130 s | collapses to 0-1 rooms; flagged UNRELIABLE |
 
-| Tier | Input | Front end | Runs on | Sample-data result (vs LiDAR) |
+## 4. Results
+
+**Gate table** (`benchmark/results/FINAL_RESULTS.md`):
+
+| Gate | Target | Measured | Status |
+|---|---|---|---|
+| Walls (LiDAR) vs laser | 1 cm / 0.5% | 22 walls: median 20.5 cm; 2 within 2 cm; best capture (c) median 5.1 cm | FAIL |
+| Opening widths | <= 2 cm on >= 85% | 7 doors scored: median 11.5 cm; 0 within 2 cm | FAIL |
+| Ceiling height | <= 1.5 cm | laser 2.27-2.31 m; iPad sweeps rarely saw the ceiling -> withheld in most rooms | NOT SCORED |
+| Repeatability | 1 cm / 0.5% per wall | own a/b 0/8, a/c 0/4, sample 4/24; raw surfaces agree to 0.69-0.95 cm | FAIL |
+| Drift | method + ablation | pose graph with verified loops, ablated (sec. 5) | PARTIAL |
+| Photo whole-property stitch | +/-8%, correct adjacency | does not stitch | FAIL |
+| Video walls | +/-3% | not met | FAIL |
+| Calibration | honest intervals | LiDAR 91% coverage vs laser, video/photo 100% vs LiDAR (in-sample) | PARTIAL |
+| Head-to-head vs consumer app | beat/tie >= 70% | not run: no device | NOT DONE |
+
+**Where the LiDAR error comes from** (laser, `scripts/laser_gt.py`, `scripts/scale_check.py`). The fused cloud is
+metrically right: similarity ICP onto the laser scan gives scale 1.008 and 1.9 cm RMSE. The error is in which
+surface a room side snaps to. Per-side comparison against laser wall faces (measured above furniture height):
+several sides land within 1 cm (-0.6, -0.7, -0.9, -1.2 cm), many land **18-24 cm outside, i.e. on the far face of
+the wall**. A fix for one cause (rectilinear outlines including the wall thickness) moved room1's worst sides from
++23.8/+22.7 cm to -6.7/+2.2 cm; the remaining far-face picks are the main open problem. The scorer itself is
+limited to rectangular rooms and mis-measured one tiny room on capture b.
+
+**Repeatability.** Raw wall surfaces of two captures agree to 0.69 cm (own) and 0.95 cm (sample) after
+registration; footprints to 1.4% (own a/b). Per-wall agreement fails because the same space is partitioned or
+snapped differently per capture (sec. 6).
+
+**Video and photo** (`benchmark/results/video/`). Within one 24-frame chunk DA3 is good to 5-17 cm over 3 m.
+Chaining chunks is the weak link: v1 chained relative scale and compounded it (scale off 86-91% after 54-60 m);
+v2 anchors each chunk to metric depth independently, which removed the blow-up but not the shape error
+(1.5-4.5 m jumps at chunk joins, ATE ~3 m on 98 m). COLMAP SfM registered only 13-21% of keyframes on these
+low-texture walls and is kept only as a fallback. The photo tier's joint pass does not hold rooms together;
+on the own capture it recovered no rooms and emits an empty, flagged plan instead of a guess.
+
+**Timing** (RTX 5050 laptop): LiDAR 18-32 s; video 39-109 s with cached DA3, 380 s cold for a 90 s clip; photo
+32-132 s.
+
+## 5. Drift handling and ablation
+
+Pose graph (`geometry/drift.py`): ARKit odometry edges between consecutive keyframes, plus loop edges at revisits
+(>= 100 keyframes apart, < 0.6 m, < 25 deg viewing difference), each verified by coarse-to-fine point-to-plane ICP
+of local submaps and accepted only if fitness > 0.5, RMSE < 1.5 cm, correction < 0.3 m and < 3 deg; Open3D global
+optimisation with line-process pruning. ON by default; `--no-drift-correction` is the ablation switch. A first
+version (start-end loop only) was rejected by its own checks on every sample (start and end views do not overlap).
+
+| Setting (sample with_ceiling) | loops used | max pose shift | floor spread | footprint diff vs repeat capture |
 |---|---|---|---|---|
-| LiDAR | Stray Scanner export | ARKit poses + LiDAR depth (conf = 2) | iPhone 12 Pro or newer (Pro) | reference; repeatability in sec. 5 |
-| Video | any clip | DA3-LARGE-1.1 chunks (24 frames, 8 shared), per-chunk metric scale | any iPhone 15+ clip; CUDA GPU for processing | footprint -55% to -90%; matched dims 33-54% median error; **fails +/-3% gate** |
-| Photo | per-room folders | joint DA3 pass over all photos, metric scale | any iPhone 15+; CUDA GPU | collapses to 1 room; 3/3 flagged UNRELIABLE by the plausibility gate; **fails stitch and +/-8% gates** |
+| OFF (ARKit poses) | - | - | 1.40 cm | 6.4% |
+| ON, strict (shipped) | 1/5 | 16.6 cm | 1.49 cm | 12.0% |
+| ON, loose (fitness > 0.35) | 5/5 | 19.4 cm | 1.80 cm | 16.2% |
 
-Conventions verified on data, not assumed: Stray Scanner poses are camera-to-world in an OpenCV camera frame
-inside an ARKit y-up world (`scripts/test_convention.py`: floor peak 1.4 m below camera only under this
-convention). DA3 extrinsics are world-to-camera (`benchmark/results/video/da3_convention_single_room.log`:
-5-17 cm ATE per chunk as w2c vs 21-26 cm as c2w). DA3METRIC output is canonical depth; metres = out x f / 300
-(`benchmark/results/da3_vs_lidar_single_room.log`: LiDAR/DA3 ratio 1.37-1.59 vs predicted 1.40).
+On ARKitScenes capture a it accepted 2/3 loops (max shift 9.1 cm). **No measured benefit on these captures**:
+ARKit already relocalises on revisits, and partial-overlap loop edges add more error than they remove. Shipped
+strict so that genuinely drifting captures are corrected; this row is not a pass.
 
-## 3. Drift
+## 6. Fix loop (25%)
 
-LiDAR (`geometry/drift.py`, ON by default, `--no-drift-correction` for the ablation): a pose graph with ARKit
-frame-to-frame odometry edges plus loop edges at revisits (frames >= 100 keyframes apart, < 0.6 m and < 25 deg
-viewing difference), each verified by coarse-to-fine point-to-plane ICP of local submaps and accepted only if
-fitness > 0.5, RMSE < 1.5 cm, correction < 0.3 m and < 3 deg; Open3D global optimisation with line-process pruning.
-A first version (start-end loop only) was rejected by its own checks on every sample: the walk starts and ends
-looking in different directions, so the two submaps barely overlap.
+Declared before any fix code (tag `fixloop-before`): worst measured gate = LiDAR repeatability, 0/22 walls;
+hypothesis: room segmentation (not sensing, drift or snapping); prediction >= 70% after structure-only
+segmentation. Shipped (tag `fixloop-after`): structure-only segmentation, protocol-covered wall band, wall
+extension, fine yaw, rectangle-first snapping. Result **2/20 walls; matched-room extents median 50 -> 19 cm; best
+room 2.3/2.6 cm. Gate not passed; prediction badly wrong.** Root cause partly right: segmentation was the dominant
+cause, but snapping was wrongly excluded and a 0.75 deg orientation error was missed. The laser ground truth found
+later confirms the snapping half: wrong-face picks of ~20 cm. Full post-mortem: `fixloop/POSTMORTEM.md`.
 
-Ablation (`scripts/drift_ablation.py`, `benchmark/results/drift_ablation_*.log`):
+## 7. Error budget and calibration
 
-| setting | loops used (with_ceiling) | max pose shift | floor spread | footprint with_ceiling | footprint diff vs floor_only |
-|---|---|---|---|---|---|
-| OFF (ARKit poses) | - | - | 1.40 cm | 54.51 m2 | 6.4% |
-| ON, strict (shipped) | 1/5 | 16.6 cm | 1.49 cm | 57.98 m2 | 12.0% |
-| ON, loose (fitness > 0.35) | 5/5 | 19.4 cm | 1.80 cm | 60.85 m2 | 16.2% |
-
-**The correction does not improve these captures; more loops make the drift indicators worse.** Most likely
-ARKit's VIO already relocalises on revisits, so its poses are globally consistent at this scale, and our loop
-edges (partial-overlap submaps) inject more error than they remove. Shipped strict so that a capture with real
-uncorrected drift gets corrected, while these captures change little; `floor_only` and `single_room` have no
-verified revisit and run uncorrected (stated in their warnings). Honest status of the row: correction implemented
-and ablated; benefit not demonstrated on the sample data.
-Video: v1 chained chunk scale relative to the previous chunk, which compounded per-chunk scale error (scale off
-by 86% after 54 m, `traj_floor_only.txt`). v2 anchors every chunk to metres independently and chains only
-rotation and translation. That fixed the scale blow-up mechanism but not the shape: chunk joins still jump
-1.5-4.5 m (chain_steps_with_ceiling_v2.txt), the path is 35% too long, and after a similarity fit the trajectory
-error is 2.9-3.2 m (5% of path). Within one 24-frame chunk DA3 is good to 5-17 cm over 3 m; the chaining, not the
-model, is the weak link. A global pose graph over chunk overlaps with loop closure is the next step (not shipped).
-
-## 4. Error budget (LiDAR tier, from sample data)
-
-| Source | Size | Evidence |
+| Source (LiDAR) | Size | Evidence |
 |---|---|---|
-| Raw wall surface repeatability between captures | 0.95 cm RMSE | ICP of wall bands, `fixloop/after/repeatability_lidar.md` |
-| Residual orientation between captures | 0.22 deg (~1.5 cm at 4 m) | registration residual after yaw refinement |
-| Room-side face snapping, rooms partitioned identically | 2-6 cm per dimension | `fixloop/after/room_dims.txt` |
-| Room partition differences (furniture-faced walls, slivers) | 15-140 cm when they occur | overlay `fixloop/after/overlay_A_blue_B_red.png` |
+| Sensor + poses (cloud vs laser) | 0.8% scale, 1.9 cm RMSE | `scale_check.py` |
+| Raw surface repeatability | 0.69-0.95 cm | repeatability registrations |
+| Orientation between captures | 0.22 deg after refinement | registration residual |
+| Room-side face selection | 0-24 cm per side (bimodal: ~1 cm or ~20 cm) | per-side laser comparison |
+| Partition differences between captures | 15-140 cm when they occur | `fixloop/after/overlay_A_blue_B_red.png` |
 
-The dominant term is partitioning, not sensing. That ordering drove the fix loop.
+Intervals are fitted from measured errors (`scripts/fit_calibration.py`): LiDAR half-width = max(4.3% x length,
+46 cm) from 22 laser residuals (errors are roughly constant in cm, so a relative-only interval was 45% covered);
+video 97% and photo 39% from errors vs LiDAR. Coverage after fitting: LiDAR 91% vs laser, video/photo 100% vs
+LiDAR. **These coverages are in-sample (fitted and evaluated on the same captures) and therefore optimistic.**
 
-## 5. Fix loop (25%)
+## 8. Known failure modes and what is not done
 
-Declared before any fix code (tag `fixloop-before`): worst measured gate = LiDAR repeatability, 0/22 walls.
-Hypothesis: room segmentation, not sensing/drift/snapping. Predicted >= 70% after structure-only segmentation.
-Shipped (tag `fixloop-after`): structure-only segmentation, protocol-covered wall band, wall extension, fine yaw,
-rectangle-first snapping. Result: 2/20 walls pass; matched-room extents median diff 50 -> 19 cm; best room 2.3/2.6 cm.
-**Gate not passed; prediction badly wrong.** Root cause partly right: segmentation confirmed dominant; snapping was
-wrongly excluded and orientation error (0.75 deg) was missed. Full story: `fixloop/POSTMORTEM.md`.
-
-## 6. Calibration
-
-Intervals are relative half-widths per tier and measurement kind (`calibration.py`), inflated by evidence
-quality: wall-face support along each side, enclosure, and for video/photo the disagreement of metric-scale
-votes. Half-widths are fitted from measured errors (scripts/fit_calibration.py, enchmark/results/calibration_fit.json):
-LiDAR 1.2% (4 cross-capture residuals on identically partitioned rooms, halved), photo 39% (2 residuals, so
-max(default, 1.25 x worst)), video 97% (conformal q90 of 6). With these, video/photo intervals contain the LiDAR
-value for 100% of matched dimensions; **this is in-sample (fitted and scored on the same captures) and optimistic.**
-Before fitting, coverage was 25-50%: the defaults were confident garbage.
-A plausibility gate marks a non-LiDAR plan UNRELIABLE when floor-to-ceiling is outside 2.1-4.2 m (wrong metric
-scale): ceilings withheld, intervals at the tier maximum. It fires on 4/6 video/photo runs of the sample data.
-
-## 7. Known failure modes
-
-- Wardrobes and tall furniture in the wall band act as walls: rooms split or shrink differently per capture.
-- Sliver rooms (< 0.9 m) are not merged.
-- Mirrors and glass: LiDAR returns through/off them create phantom space; not handled.
-- Low light/low texture: hurts video/photo poses most (COLMAP registered 13-21% of keyframes; replaced by DA3).
-- Openings, damage, concealed-damage rules, scope items: not implemented (schema fields emitted empty).
-- No tape ground truth for the sample data: accuracy is cross-tier agreement and repeatability only.
+- Far-face wall snapping (~20 cm) and capture-dependent partitions (wardrobes/shelves in the wall band, sliver
+  rooms) dominate the LiDAR error. Next step: choose the room-side face using ray-cast free space (the face whose
+  room side was observed empty), and merge slivers.
+- Mirrors and glass: LiDAR sees through or reflects, creating phantom space; not handled.
+- Low texture / long walks: video chunk chaining drifts; needs a global pose graph over chunk overlaps.
+- Not implemented: windows, damage regions, concealed-damage rules, scope line items (schema fields are emitted
+  empty), consumer-app head-to-head (no device), staged-damage benchmark room.
