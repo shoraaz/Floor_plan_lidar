@@ -4,6 +4,19 @@ Phone capture -> dimensioned, stitched floor plan with an interval on every numb
 Three input tiers (LiDAR, video, photos) share one geometry backend and one output contract
 (`schema/property_plan.schema.json`). Everything runs locally; no external services.
 
+## Deliverables (case study)
+
+| # | Deliverable | Where |
+|---|---|---|
+| 1 | Compliance matrix | `docs/COMPLIANCE_MATRIX.yaml` |
+| 2 | Capture route + device matrix | `docs/CAPTURE_PROTOCOL.md`, `docs/DEVICE_MATRIX.md` |
+| 3 | One command per capture | this README, `roomscan run` |
+| 4 | Reproduction bundle | `reproduction/` (`get_arkitscenes.ps1`, `run_final.ps1`, `fixloop.ps1`), `scripts/` |
+| 5 | Benchmark report | `benchmark/results/FINAL_RESULTS.md` (+ per-test files in `benchmark/results/`) |
+| 6 | Fix loop bundle | `fixloop/`, tags `fixloop-before` / `fixloop-after` |
+| 7 | Technical report | `docs/REPORT.md` (PDF with deliverables index: `docs/roomscan_submission.pdf`) |
+| 8 | Raw benchmark data | own: ARKitScenes venue 470350 via `reproduction/get_arkitscenes.ps1` (licence: fetch, not re-host); sample: organisers' captures |
+
 ## Quickstart (clean Windows/Linux machine, ~10 min + model download)
 
 ```bash

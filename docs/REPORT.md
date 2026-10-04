@@ -142,9 +142,10 @@ LiDAR. **These coverages are in-sample (fitted and evaluated on the same capture
 
 ## 8. Known failure modes and what is not done
 
-- Far-face wall snapping (~20 cm) and capture-dependent partitions (wardrobes/shelves in the wall band, sliver
-  rooms) dominate the LiDAR error. Next step: choose the room-side face using ray-cast free space (the face whose
-  room side was observed empty), and merge slivers.
+- Virtual walls (doorway closure / wall extension) and capture-dependent partitions (wardrobes/shelves in the wall
+  band, sliver rooms) dominate the LiDAR error (~20 cm where they occur); on physical walls the error is ~5 cm.
+  Free-space face selection was tried and regressed. Next steps: never snap a virtual side to a stray surface (keep
+  it at the doorway-closure line and widen its interval), classify wall vs tall furniture by vertical extent, merge slivers.
 - Mirrors and glass: LiDAR sees through or reflects, creating phantom space; not handled.
 - Low texture / long walks: video chunk chaining drifts; needs a global pose graph over chunk overlaps.
 - Not implemented: windows, damage regions, concealed-damage rules, scope line items (schema fields are emitted
